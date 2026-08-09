@@ -84,3 +84,22 @@ MySampleService.exe install|uninstall|start|stop|restart
 MySampleService.exe -quiet install
 MySampleService.exe install -quiet
 ```
+
+版本参数：`-V` / `--version` / `/V` / `-v`，输出 `winsvcx <版本>`
+并返回 0。
+
+## 8. lib/cli
+
+```go
+type Options struct {
+	Command     string // install/uninstall/start/stop/restart；空串为运行模式
+	Quiet       bool   // 安静模式
+	ShowVersion bool   // 输出版本号
+}
+
+func Parse(args []string) (Options, error) // 识别 -quiet/-q 与 -V/--version
+func IsSupportedCommand(cmd string) bool
+```
+
+`cli.Version` 为构建版本，可用
+`-ldflags "-X github.com/lcylpzls/winsvcx/lib/cli.Version=v1.0.0"` 覆盖。

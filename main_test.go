@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/lcylpzls/logx"
+	"github.com/lcylpzls/winsvcx/lib/cli"
 	"github.com/lcylpzls/winsvcx/lib/win32"
 	"golang.org/x/sys/windows/svc"
 )
@@ -270,20 +271,6 @@ func applyMainStubs(s mainStubs) func() {
 	}
 }
 
-// TestParseQuietFlag 覆盖安静模式参数解析。
-func TestParseQuietFlag(t *testing.T) {
-	rest, quiet := parseQuietFlag([]string{"app.exe", "install"})
-	if quiet || len(rest) != 2 || rest[1] != "install" {
-		t.Fatalf("无安静参数应保持原样：%v %v", rest, quiet)
-	}
-	for _, flag := range []string{"-quiet", "--quiet", "/quiet", "-q", "-QUIET"} {
-		rest, quiet = parseQuietFlag([]string{"app.exe", flag, "start"})
-		if !quiet || len(rest) != 2 || rest[1] != "start" {
-			t.Fatalf("%s 应被识别：%v %v", flag, rest, quiet)
-		}
-	}
-}
-
 func TestRunMainExecutableError(t *testing.T) {
 	restore := applyMainStubs(mainStubs{exeErr: errors.New("路径失败")})
 	code := runMain()
@@ -325,6 +312,64 @@ func TestRunMainCommandMode(t *testing.T) {
 	restore()
 	if code != 0 || lastBox(boxes).caption != "启动服务成功" {
 		t.Fatalf("命令模式应分发命令：code=%d boxes=%+v", code, boxes)
+	}
+}
+
+// TestRunMainQuietCommand 覆盖安静模式下命令分发不弹窗。
+func TestRunMainQuietCommand(t *testing.T) {
+	var boxes []boxCall
+	restore := applyMainStubs(mainStubs{
+		args:  []string{"app.exe", "-quiet", "start"},
+		boxes: &boxes,
+		quiet: true,
+	})
+	code := runMain()
+	restore()
+	if code != 0 {
+		t.Fatalf("安静命令应返回 0，实际：%d", code)
+	}
+	if len(boxes) != 0 {
+		t.Fatalf("安静模式不应弹窗：%+v", boxes)
+	}
+}
+
+// TestRunMainInvalidCommand 覆盖无效命令与未知开关。
+func TestRunMainInvalidCommand(t *testing.T) {
+	var boxes []boxCall
+	restore := applyMainStubs(mainStubs{args: []string{"app.exe", "bad"}, boxes: &boxes})
+	code := runMain()
+	restore()
+	if code != 2 {
+		t.Fatalf("无效命令应返回 2，实际：%d", code)
+	}
+	if got := lastBox(boxes); got.caption != "无效命令" {
+		t.Fatalf("无效命令消息框不符：%+v", got)
+	}
+
+	boxes = nil
+	restore = applyMainStubs(mainStubs{args: []string{"app.exe", "-quiet", "-verbose"}, boxes: &boxes})
+	code = runMain()
+	restore()
+	if code != 2 {
+		t.Fatalf("未知开关应返回 2，实际：%d", code)
+	}
+	if len(boxes) != 0 {
+		t.Fatalf("安静无效参数不应弹窗：%+v", boxes)
+	}
+}
+
+// TestRunMainVersion 覆盖版本号输出。
+func TestRunMainVersion(t *testing.T) {
+	origPrint := printVersion
+	var printed string
+	printVersion = func() { printed = "winsvcx " + cli.Version }
+	defer func() { printVersion = origPrint }()
+
+	restore := applyMainStubs(mainStubs{args: []string{"app.exe", "-V"}})
+	code := runMain()
+	restore()
+	if code != 0 || printed == "" {
+		t.Fatalf("版本参数应输出并返回 0：code=%d printed=%q", code, printed)
 	}
 }
 

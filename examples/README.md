@@ -75,4 +75,6 @@ MyService.exe install|uninstall|start|stop|restart
 静默部署：`MyService.exe -quiet install`（关闭弹窗与控制台输出，
 退出码 0 成功 / 1 失败 / 2 无效命令）。
 
+版本查询：`MyService.exe -V` 输出 `winsvcx <版本>`。
+
 > 注意：install/uninstall/start/stop/restart 需要管理员权限。

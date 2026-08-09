@@ -12,6 +12,7 @@ import (
 
 	"github.com/lcylpzls/logx"
 	"github.com/lcylpzls/winsvcx/lib/app"
+	"github.com/lcylpzls/winsvcx/lib/cli"
 	"github.com/lcylpzls/winsvcx/lib/config"
 	"github.com/lcylpzls/winsvcx/lib/logger"
 	"github.com/lcylpzls/winsvcx/lib/service"
@@ -39,6 +40,7 @@ var (
 	runService       = service.Run
 	runApp           = app.Run
 	getArgs          = func() []string { return os.Args }
+	printVersion     = func() { fmt.Printf("winsvcx %s\n", cli.Version) }
 )
 
 // quietMode 安静模式：关闭消息框与控制台输出，仅保留文件日志与退出码。
@@ -48,27 +50,19 @@ func main() {
 	os.Exit(runMain())
 }
 
-// parseQuietFlag 解析安静模式参数并返回剩余参数。
-// 支持 -quiet / --quiet / /quiet / -q（大小写不敏感，位置任意）。
-func parseQuietFlag(args []string) ([]string, bool) {
-	quiet := false
-	rest := make([]string, 0, len(args))
-	for _, a := range args {
-		switch strings.ToLower(a) {
-		case "-quiet", "--quiet", "/quiet", "-q":
-			quiet = true
-		default:
-			rest = append(rest, a)
-		}
-	}
-	return rest, quiet
-}
-
 // runMain 主流程（可测试入口）。
 func runMain() int {
 	args := getArgs()
-	cleanArgs, quiet := parseQuietFlag(args)
-	quietMode = quiet
+	opts, parseErr := cli.Parse(args)
+	quietMode = opts.Quiet
+	if opts.ShowVersion {
+		printVersion()
+		return 0
+	}
+	if parseErr != nil {
+		notify("无效命令", parseErr.Error(), win32.MB_OK|win32.MB_ICONWARNING)
+		return 2
+	}
 	execPath, err := executablePath()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "无法获取可执行文件路径：%v\n", err)
@@ -95,8 +89,8 @@ func runMain() int {
 		runService(serviceName)
 		return 0
 	}
-	if len(cleanArgs) > 1 {
-		return handleServiceCommand(cleanArgs[1])
+	if opts.Command != "" {
+		return handleServiceCommand(opts.Command)
 	}
 
 	var wg sync.WaitGroup
@@ -172,7 +166,7 @@ func handleServiceCommand(cmd string) int {
 		return 0
 
 	default:
-		notify("无效命令", "不支持的命令: "+cmd+"\n\n支持的命令: install, uninstall, start, stop, restart",
+		notify("无效命令", "不支持的命令: "+cmd+"\n\n支持的命令: "+strings.Join(cli.SupportedCommands, ", "),
 			win32.MB_OK|win32.MB_ICONWARNING)
 		return 2
 	}

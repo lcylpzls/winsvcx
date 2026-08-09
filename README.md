@@ -39,6 +39,8 @@ go build -o MySampleService.exe
 - **安静模式**：任意位置加 `-quiet`（或 `-q`），关闭消息框与
   控制台输出，仅保留文件日志与退出码（0 成功 / 1 失败 / 2 无效命令），
   适合脚本与静默部署：`MySampleService.exe -quiet install`
+- **版本号**：`MySampleService.exe -V`（或 `--version`），
+  输出 `winsvcx <版本>` 并返回 0
 
 ### 运行模式
 
@@ -138,6 +140,12 @@ var serviceDescription string = "这是一个基于go语言构建的具备Window
 - [API 定版](docs/api.md)
 - [版本路线](docs/roadmap.md)
 - [库方式使用示例](examples/README.md)
+
+## 参数解析（lib/cli）
+
+参数解析已下沉到库包 `github.com/lcylpzls/winsvcx/lib/cli`：
+`cli.Parse(os.Args)` 统一检测安静模式、控制命令与版本参数，
+自定义服务入口可直接复用，无需重复实现。
 
 ## 注意事项
 
