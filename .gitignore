@@ -1,6 +1,7 @@
 .idea
 .vscode
 coverage.out
+/coverage
 logs
 *.exe
 *.bat
