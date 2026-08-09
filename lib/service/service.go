@@ -11,6 +11,7 @@ import (
 	"github.com/lcylpzls/winsvcx/lib/errors"
 	"github.com/lcylpzls/winsvcx/lib/logger"
 	"golang.org/x/sys/windows/svc"
+	"golang.org/x/sys/windows/svc/eventlog"
 )
 
 // runApp 可替换的应用启动函数（测试注入用）。
@@ -18,6 +19,16 @@ var runApp = app.Run
 
 // runSvc 可替换的服务运行函数（测试注入用）。
 var runSvc = svc.Run
+
+// writeEventLog 将服务错误写入 Windows 事件日志（尽力而为）。
+var writeEventLog = func(name, msg string) error {
+	l, err := eventlog.Open(name)
+	if err != nil {
+		return err
+	}
+	defer l.Close()
+	return l.Error(1, msg)
+}
 
 // Service 实现 svc.Handler 接口。
 type Service struct {
@@ -67,8 +78,12 @@ func Run(name string) {
 	l := currentLogger()
 	l.Info("服务启动中", logx.Fields())
 	if err := runSvc(name, &Service{}); err != nil {
-		l.Error("服务运行失败", logx.Fields(logx.Any("error",
-			errx.WrapCode(err, errors.CodeServiceRunFailed, "服务运行失败"))))
+		wrapped := errx.WrapCode(err, errors.CodeServiceRunFailed, "服务运行失败")
+		l.Error("服务运行失败", logx.Fields(logx.Any("error", wrapped)))
+		// 同步写入事件日志，便于在事件查看器中排查。
+		if wErr := writeEventLog(name, wrapped.Error()); wErr != nil {
+			l.Warn("写入事件日志失败", logx.Fields(logx.Any("error", wErr)))
+		}
 	}
 	l.Info("服务已退出", logx.Fields())
 }

@@ -73,6 +73,12 @@ func TestExecuteLifecycle(t *testing.T) {
 func TestRun(t *testing.T) {
 	config.Log = testLogger()
 	orig := runSvc
+	origEvent := writeEventLog
+	var events []string
+	writeEventLog = func(name, msg string) error {
+		events = append(events, name+":"+msg)
+		return nil
+	}
 	var ran bool
 	runSvc = func(string, svc.Handler) error { ran = true; return nil }
 	Run("svc")
@@ -82,6 +88,22 @@ func TestRun(t *testing.T) {
 	runSvc = func(string, svc.Handler) error { return errors.New("运行失败") }
 	Run("svc")
 	runSvc = orig
+	if len(events) != 1 {
+		t.Fatalf("事件日志应写入 1 条，实际：%d", len(events))
+	}
+	writeEventLog = origEvent
+}
+
+// TestRunEventLogFailure 覆盖事件日志写入失败分支。
+func TestRunEventLogFailure(t *testing.T) {
+	config.Log = testLogger()
+	orig := runSvc
+	origEvent := writeEventLog
+	runSvc = func(string, svc.Handler) error { return errors.New("运行失败") }
+	writeEventLog = func(string, string) error { return errors.New("事件日志失败") }
+	Run("svc")
+	runSvc = orig
+	writeEventLog = origEvent
 }
 
 // TestExecuteChannelClose 覆盖请求通道关闭（未收到停止命令）分支。
