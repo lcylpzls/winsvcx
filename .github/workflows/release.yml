@@ -34,6 +34,11 @@ jobs:
         env:
           GOARCH: arm64
 
+      - name: Build 386
+        run: go build ./...
+        env:
+          GOARCH: '386'
+
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:

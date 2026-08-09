@@ -1,5 +1,18 @@
 # 更新日志
 
+## [v0.5.0] - 2026-08-10
+
+### 发布前终审
+
+- 新增 MIT LICENSE；
+- CI 增加 govulncheck 作业与 windows/386 构建；
+- Release 增加 windows/386 构建验证；
+- 依赖整理（go mod tidy/verify）与三架构（386/amd64/arm64）
+  构建验证；
+- 静态检查、race、fuzz 全量复核。
+
+> roadmap 至此完成，后续版本为自主打磨。
+
 ## [v0.4.0] - 2026-08-10
 
 ### 新增
