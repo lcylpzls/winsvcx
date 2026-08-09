@@ -16,6 +16,7 @@ const (
 	CodeEventLogFailed        errx.Code = "winsvcx_event_log_failed"
 	CodeExecutablePath        errx.Code = "winsvcx_executable_path"
 	CodeServiceRunFailed      errx.Code = "winsvcx_service_run_failed"
+	CodeAccessDenied          errx.Code = "winsvcx_access_denied"
 )
 
 func init() {
@@ -41,4 +42,6 @@ func init() {
 	errx.RegisterCodeKind(CodeExecutablePath, errx.KindUnavailable)
 	errx.RegisterCode(CodeServiceRunFailed, "服务运行失败")
 	errx.RegisterCodeKind(CodeServiceRunFailed, errx.KindUnavailable)
+	errx.RegisterCode(CodeAccessDenied, "访问被拒绝（需要管理员权限）")
+	errx.RegisterCodeKind(CodeAccessDenied, errx.KindForbidden)
 }

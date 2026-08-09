@@ -55,6 +55,7 @@ main（svc.IsWindowsService 判断运行模式）
 | winsvcx_event_log_failed | unavailable |
 | winsvcx_executable_path | unavailable |
 | winsvcx_service_run_failed | unavailable |
+| winsvcx_access_denied | forbidden |
 
 ## 5. 日志
 

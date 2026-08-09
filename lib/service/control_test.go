@@ -7,6 +7,7 @@ import (
 
 	"github.com/lcylpzls/errx"
 	wxerr "github.com/lcylpzls/winsvcx/lib/errors"
+	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
 )
@@ -20,6 +21,8 @@ type fakeService struct {
 	controlState svc.State
 	deleteErr    error
 	recoveryErr  error
+	recovery     []mgr.RecoveryAction
+	resetPeriod  uint32
 	closed       bool
 	deleted      bool
 }
@@ -47,17 +50,20 @@ func (s *fakeService) Delete() error {
 	return s.deleteErr
 }
 
-func (s *fakeService) SetRecoveryActions([]mgr.RecoveryAction, uint32) error {
+func (s *fakeService) SetRecoveryActions(actions []mgr.RecoveryAction, resetPeriod uint32) error {
+	s.recovery = actions
+	s.resetPeriod = resetPeriod
 	return s.recoveryErr
 }
 
 // fakeManager 可编程的服务管理器测试桩。
 type fakeManager struct {
-	openErr    error
-	createErr  error
-	svc        *fakeService
-	openCalls  int
-	openFailAt int
+	openErr          error
+	createErr        error
+	svc              *fakeService
+	openCalls        int
+	openFailAt       int
+	createdStartType uint32
 }
 
 func (m *fakeManager) Disconnect() error { return nil }
@@ -73,10 +79,11 @@ func (m *fakeManager) OpenService(string) (serviceHandle, error) {
 	return m.svc, nil
 }
 
-func (m *fakeManager) CreateService(string, string, mgr.Config, ...string) (serviceHandle, error) {
+func (m *fakeManager) CreateService(_ string, _ string, c mgr.Config, _ ...string) (serviceHandle, error) {
 	if m.createErr != nil {
 		return nil, m.createErr
 	}
+	m.createdStartType = c.StartType
 	return m.svc, nil
 }
 
@@ -500,5 +507,104 @@ func TestRealManagerAdapter(t *testing.T) {
 	}
 	if err := m.Disconnect(); err != nil {
 		t.Fatalf("断开服务管理器失败：%v", err)
+	}
+}
+
+// TestSetStopTimeout 覆盖停止超时配置校验。
+func TestSetStopTimeout(t *testing.T) {
+	orig := stopTimeout
+	defer func() { stopTimeout = orig }()
+	if err := SetStopTimeout(0); !errx.Is(err, wxerr.CodeInvalidConfig) {
+		t.Fatalf("非法超时应报错，实际：%v", err)
+	}
+	if err := SetStopTimeout(-time.Second); !errx.Is(err, wxerr.CodeInvalidConfig) {
+		t.Fatalf("非法超时应报错，实际：%v", err)
+	}
+	if err := SetStopTimeout(5 * time.Second); err != nil || stopTimeout != 5*time.Second {
+		t.Fatalf("合法超时应生效：%v", err)
+	}
+}
+
+// TestValidateInstallOptions 覆盖安装选项默认值与校验。
+func TestValidateInstallOptions(t *testing.T) {
+	def, err := validateInstallOptions(InstallOptions{})
+	if err != nil {
+		t.Fatalf("空选项应补齐默认值：%v", err)
+	}
+	if def.StartType != mgr.StartAutomatic || len(def.RecoveryActions) != 3 ||
+		def.RecoveryResetPeriod != 60 || def.EventLogTypes == 0 {
+		t.Fatalf("默认值不符：%+v", def)
+	}
+
+	if _, err := validateInstallOptions(InstallOptions{StartType: mgr.StartDisabled + 1}); !errx.Is(err, wxerr.CodeInvalidConfig) {
+		t.Fatalf("非法启动类型应报错，实际：%v", err)
+	}
+	if _, err := validateInstallOptions(InstallOptions{
+		RecoveryActions: []mgr.RecoveryAction{{Type: 0, Delay: time.Second}},
+	}); !errx.Is(err, wxerr.CodeInvalidConfig) {
+		t.Fatalf("非法恢复动作应报错，实际：%v", err)
+	}
+	if _, err := validateInstallOptions(InstallOptions{
+		RecoveryActions: []mgr.RecoveryAction{{Type: mgr.ServiceRestart, Delay: 0}},
+	}); !errx.Is(err, wxerr.CodeInvalidConfig) {
+		t.Fatalf("零延迟恢复动作应报错，实际：%v", err)
+	}
+
+	custom := InstallOptions{
+		StartType:           mgr.StartManual,
+		RecoveryActions:     []mgr.RecoveryAction{{Type: mgr.ServiceRestart, Delay: time.Second}},
+		RecoveryResetPeriod: 30,
+		EventLogTypes:       windows.EVENTLOG_ERROR_TYPE,
+	}
+	got, err := validateInstallOptions(custom)
+	if err != nil || got.StartType != mgr.StartManual || len(got.RecoveryActions) != 1 ||
+		got.RecoveryResetPeriod != 30 || got.EventLogTypes != windows.EVENTLOG_ERROR_TYPE {
+		t.Fatalf("自定义选项未被保留：%+v err=%v", got, err)
+	}
+}
+
+// TestInstallWithOptionsCustom 覆盖自定义选项透传。
+func TestInstallWithOptionsCustom(t *testing.T) {
+	svcStub := &fakeService{}
+	m := &fakeManager{openErr: errors.New("不存在"), svc: svcStub}
+	restore := applyControl(m, nil, nil, nil, time.Second)
+	opts := InstallOptions{
+		StartType:           mgr.StartManual,
+		RecoveryActions:     []mgr.RecoveryAction{{Type: mgr.ServiceRestart, Delay: 7 * time.Second}},
+		RecoveryResetPeriod: 45,
+		EventLogTypes:       windows.EVENTLOG_ERROR_TYPE,
+	}
+	err := InstallWithOptions("svc", "", "", opts)
+	restore()
+	if err != nil {
+		t.Fatalf("安装失败：%v", err)
+	}
+	if m.createdStartType != mgr.StartManual {
+		t.Fatalf("启动类型未透传：%v", m.createdStartType)
+	}
+	if len(svcStub.recovery) != 1 || svcStub.recovery[0].Delay != 7*time.Second {
+		t.Fatalf("恢复动作未透传：%+v", svcStub.recovery)
+	}
+	if svcStub.resetPeriod != 45 {
+		t.Fatalf("恢复重置周期未透传：%d", svcStub.resetPeriod)
+	}
+}
+
+// TestAccessDeniedClassification 覆盖访问被拒绝错误细化。
+func TestAccessDeniedClassification(t *testing.T) {
+	orig := connectManager
+	connectManager = func() (manager, error) { return nil, windows.ERROR_ACCESS_DENIED }
+	_, err := GetServiceStatus("svc")
+	connectManager = orig
+	if !errx.Is(err, wxerr.CodeAccessDenied) {
+		t.Fatalf("访问被拒绝应细化错误码，实际：%v", err)
+	}
+
+	restore := applyControl(&fakeManager{openErr: errors.New("不存在"),
+		createErr: windows.ERROR_ACCESS_DENIED, svc: &fakeService{}}, nil, nil, nil, time.Second)
+	err = Install("svc", "", "")
+	restore()
+	if !errx.Is(err, wxerr.CodeAccessDenied) {
+		t.Fatalf("创建服务被拒绝应细化错误码，实际：%v", err)
 	}
 }

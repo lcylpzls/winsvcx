@@ -30,11 +30,18 @@ func Run(name string)                          // 以服务模式运行
 func GetServiceStatus(name string) (svc.State, error)
 func IsServiceExist(name string) (bool, error)
 func Install(name, displayName, description string) error
+func InstallWithOptions(name, displayName, description string, opts InstallOptions) error
+func DefaultInstallOptions() InstallOptions
+func SetStopTimeout(d time.Duration) error
 func Uninstall(name string) error
 func Start(name string) error
 func Stop(name string) error
 func Restart(name string) error
 ```
+
+`InstallOptions`：`StartType`（0=自动）、`RecoveryActions`（nil=默认
+三次重启）、`RecoveryResetPeriod`（0=60）、`EventLogTypes`
+（0=错误+警告+信息）。
 
 ## 3. lib/app
 

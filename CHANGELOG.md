@@ -1,5 +1,21 @@
 # 更新日志
 
+## [v0.4.0] - 2026-08-10
+
+### 新增
+
+- 停止等待超时可配置：`SetStopTimeout`（非法值返回配置错误码）；
+- 安装选项可配置：`InstallWithOptions` + `DefaultInstallOptions`
+  （启动类型/恢复动作/重置周期/事件日志类别，含校验）；
+- 权限错误细化：访问被拒绝（需要管理员）映射
+  `winsvcx_access_denied`（forbidden 分类）；
+- `FuzzValidateInstallOptions` 模糊目标并接入 Windows CI。
+
+### 质量
+
+- lib/service 控制逻辑 90.9%（剩余为真实服务管理器适配层集成覆盖）；
+- race / vet / staticcheck / fuzz 全绿。
+
 ## [v0.3.0] - 2026-08-10
 
 ### 新增

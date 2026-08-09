@@ -20,6 +20,7 @@ func TestCodesRegistered(t *testing.T) {
 		CodeEventLogFailed,
 		CodeExecutablePath,
 		CodeServiceRunFailed,
+		CodeAccessDenied,
 	}
 	for _, code := range codes {
 		e := errx.NewCode(code, "测试错误")

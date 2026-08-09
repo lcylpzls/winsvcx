@@ -36,6 +36,9 @@
 - 事件日志注册失败回滚；路径/权限错误细化；
 - 并发与竞态终检（race + fuzz）。
 
+> 状态：**已发布**（v0.4.0，2026-08-10）。SetStopTimeout /
+> InstallWithOptions / 权限错误细化 / FuzzValidateInstallOptions。
+
 ## v0.5.0 — 发布前终审
 
 - 依赖整理、govulncheck、静态检查全量；
