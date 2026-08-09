@@ -2,7 +2,12 @@
 
 ## 项目概述
 
-这是一个基于Go语言开发的Windows服务框架，提供了完整的Windows服务生命周期管理功能，包括服务的安装、卸载、启动、停止和重启等操作。该框架使用`golang.org/x/sys/windows/svc`包实现Windows服务功能，并提供了简单易用的命令行接口进行服务管理。
+这是一个基于 Go 语言开发的 Windows 服务框架，提供了完整的 Windows 服务生命周期管理功能，
+包括服务的安装、卸载、启动、停止和重启等操作。该框架使用 `golang.org/x/sys/windows/svc`
+包实现 Windows 服务功能，并提供了简单易用的命令行接口进行服务管理。
+
+> 当前状态：**v0.1.0（基座化改造）**。日志使用 logx、错误统一 errx，
+> CI 与发布仅限 Windows 平台。
 
 ## 功能特性
 
@@ -10,7 +15,7 @@
 - **双模式运行**：可作为Windows服务运行，也可作为普通应用程序运行
 - **命令行参数**：提供简单的命令行参数用于管理服务
 - **用户友好提示**：使用Windows原生消息框提供操作反馈
-- **日志管理**：集成logrus日志系统，支持日志轮转和级别控制
+- **日志管理**：集成 logx 家族日志库，支持文件轮转、压缩和级别控制
 - **服务自动恢复**：配置服务在崩溃后自动重启
 - **优雅退出**：支持服务的优雅停止和资源清理
 
@@ -113,9 +118,15 @@ var serviceDescription string = "这是一个基于go语言构建的具备Window
 
 ## 依赖项
 
-- `golang.org/x/sys/windows/svc`：Windows服务支持
-- `github.com/sirupsen/logrus`：结构化日志
-- `gopkg.in/natefinch/lumberjack.v2`：日志轮转
+- `golang.org/x/sys/windows/svc`：Windows 服务支持（必需）
+- `github.com/lcylpzls/logx`：家族日志库（文件轮转/控制台）
+- `github.com/lcylpzls/errx`：家族错误库（统一错误码）
+
+## CI 与发布
+
+- CI 仅运行于 Windows：vet、staticcheck、test、race、coverage，
+  并交叉构建 windows/amd64 与 windows/arm64；
+- Release 由版本标签触发，仅 Windows 平台，测试全绿后发布。
 
 ## 注意事项
 

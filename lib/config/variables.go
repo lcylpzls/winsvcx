@@ -1,6 +1,7 @@
+// Package config 提供全局运行配置。
 package config
 
-import "github.com/sirupsen/logrus"
+import "github.com/lcylpzls/logx"
 
-
-var Log *logrus.Logger
+// Log 全局日志器（由入口初始化）。
+var Log logx.Logger

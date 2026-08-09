@@ -68,20 +68,3 @@ const (
 	IDYES    = 6
 	IDNO     = 7
 )
-
-// // 如果不是Windows服务，则运行应用程序
-// // 显示一个信息对话框（带确定按钮和信息图标）
-// win32.MessageBox("提示", "这是一个置顶的信息对话框", win32.MB_OK|win32.MB_ICONINFORMATION)
-
-// // 显示一个询问对话框（是/否按钮和问号图标）
-// result := win32.MessageBox("询问", "是否继续？", win32.MB_YESNO|win32.MB_ICONQUESTION)
-
-// // 处理用户选择
-// if result == win32.IDYES {
-//     win32.MessageBox("结果", "用户选择了'是'", win32.MB_OK|win32.MB_ICONINFORMATION)
-// } else {
-//     win32.MessageBox("结果", "用户选择了'否'", win32.MB_OK|win32.MB_ICONINFORMATION)
-// }
-
-// // 显示一个错误对话框
-// win32.MessageBox("错误", "发生了一个错误！", win32.MB_OK|win32.MB_ICONERROR)
