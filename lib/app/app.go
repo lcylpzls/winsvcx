@@ -12,6 +12,17 @@ import (
 	"golang.org/x/sys/windows/svc"
 )
 
+// 可替换系统函数（测试注入用）。
+var (
+	isWindowsService  = svc.IsWindowsService
+	waitSignalAndStop = func(stopCh chan struct{}) {
+		stopSignal := make(chan os.Signal, 1)
+		signal.Notify(stopSignal, syscall.SIGTERM, syscall.SIGINT)
+		<-stopSignal
+		close(stopCh)
+	}
+)
+
 // Run 启动应用主循环；服务模式下由服务框架关闭 stopCh，
 // 应用模式下等待系统信号后关闭 stopCh。
 func Run(stopCh chan struct{}, wg *sync.WaitGroup, logger logx.Logger) {
@@ -21,12 +32,9 @@ func Run(stopCh chan struct{}, wg *sync.WaitGroup, logger logx.Logger) {
 		runLoop(stopCh, logger)
 	}()
 
-	isWinServ, err := svc.IsWindowsService()
+	isWinServ, err := isWindowsService()
 	if err == nil && !isWinServ {
-		stopSignal := make(chan os.Signal, 1)
-		signal.Notify(stopSignal, syscall.SIGTERM, syscall.SIGINT)
-		<-stopSignal
-		close(stopCh)
+		waitSignalAndStop(stopCh)
 	}
 }
 

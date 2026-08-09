@@ -12,7 +12,7 @@ func TestInitFileConsole(t *testing.T) {
 	Reset()
 	defer Reset()
 	dir := t.TempDir()
-	l, err := Init(Options{
+	l := Init(Options{
 		LogDir:        dir,
 		Filename:      "app.log",
 		MaxSize:       1,
@@ -22,9 +22,6 @@ func TestInitFileConsole(t *testing.T) {
 		Level:         logx.DebugLevel,
 		Console:       true,
 	})
-	if err != nil {
-		t.Fatalf("初始化失败：%v", err)
-	}
 	if l == nil {
 		t.Fatal("日志器为空")
 	}
@@ -45,10 +42,7 @@ func TestInitFileConsole(t *testing.T) {
 func TestInitDefaultLevel(t *testing.T) {
 	Reset()
 	defer Reset()
-	l, err := Init(Options{Console: true})
-	if err != nil {
-		t.Fatalf("初始化失败：%v", err)
-	}
+	l := Init(Options{Console: true})
 	l.Debug("不应输出", logx.Fields()) // 默认 InfoLevel，Debug 被过滤
 	l.Info("应输出", logx.Fields())
 }
@@ -59,5 +53,21 @@ func TestGetFallback(t *testing.T) {
 	defer Reset()
 	if Get() == nil {
 		t.Fatal("降级日志器为空")
+	}
+}
+
+// TestInitDefaults 覆盖文件配置默认值分支。
+func TestInitDefaults(t *testing.T) {
+	Reset()
+	defer Reset()
+	dir := t.TempDir()
+	l := Init(Options{LogDir: dir, Filename: "default.log"})
+	l.Info("默认配置测试", logx.Fields())
+	if err := l.Close(); err != nil {
+		t.Fatalf("关闭日志器失败：%v", err)
+	}
+	files, err := filepath.Glob(filepath.Join(dir, "default-*.log"))
+	if err != nil || len(files) == 0 {
+		t.Fatalf("日志文件未创建：%v", err)
 	}
 }

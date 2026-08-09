@@ -7,6 +7,18 @@ import (
 	"unsafe"
 )
 
+// 可替换的 Win32 调用（测试注入用）。
+var (
+	loadUser32 = func() *syscall.LazyDLL { return syscall.NewLazyDLL("user32.dll") }
+	loadProc   = func(dll *syscall.LazyDLL, name string) *syscall.LazyProc {
+		return dll.NewProc(name)
+	}
+	callMessageBox = func(proc *syscall.LazyProc, hwnd uintptr, text, caption *uint16, style uint32) uintptr {
+		ret, _, _ := proc.Call(hwnd, uintptr(unsafe.Pointer(text)), uintptr(unsafe.Pointer(caption)), uintptr(style))
+		return ret
+	}
+)
+
 // 按钮类型常量
 const (
 	MB_OK               = 0x00000000
@@ -39,8 +51,8 @@ const (
 // style: 对话框样式（按钮类型|图标类型|其他属性）
 // 返回值: 用户点击的按钮ID
 func MessageBox(caption, text string, style uint32) int {
-	user32 := syscall.NewLazyDLL("user32.dll")
-	messageBox := user32.NewProc("MessageBoxW")
+	user32 := loadUser32()
+	messageBox := loadProc(user32, "MessageBoxW")
 
 	title, _ := syscall.UTF16PtrFromString(caption)
 	message, _ := syscall.UTF16PtrFromString(text)
@@ -48,14 +60,7 @@ func MessageBox(caption, text string, style uint32) int {
 	// 添加 MB_TOPMOST 和 MB_SETFOREGROUND 确保窗口置顶
 	style |= MB_TOPMOST | MB_SETFOREGROUND
 
-	ret, _, _ := messageBox.Call(
-		0,
-		uintptr(unsafe.Pointer(message)),
-		uintptr(unsafe.Pointer(title)),
-		uintptr(style),
-	)
-
-	return int(ret)
+	return int(callMessageBox(messageBox, 0, message, title, style))
 }
 
 // 返回值常量

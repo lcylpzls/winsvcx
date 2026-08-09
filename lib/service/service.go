@@ -15,6 +15,9 @@ import (
 // runApp 可替换的应用启动函数（测试注入用）。
 var runApp = app.Run
 
+// runSvc 可替换的服务运行函数（测试注入用）。
+var runSvc = svc.Run
+
 // Service 实现 svc.Handler 接口。
 type Service struct {
 	// StopFlag 标记服务是否收到停止命令。
@@ -52,7 +55,7 @@ func (s *Service) Execute(_ []string, r <-chan svc.ChangeRequest, changes chan<-
 // Run 以 Windows 服务模式运行。
 func Run(name string) {
 	config.Log.Info("服务启动中", logx.Fields())
-	if err := svc.Run(name, &Service{}); err != nil {
+	if err := runSvc(name, &Service{}); err != nil {
 		config.Log.Error("服务运行失败", logx.Fields(logx.Any("error",
 			errx.WrapCode(err, errors.CodeServiceRunFailed, "服务运行失败"))))
 	}

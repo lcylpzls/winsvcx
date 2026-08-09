@@ -31,7 +31,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "无法获取可执行文件路径：%v\n", err)
 		os.Exit(1)
 	}
-	log, err := logger.Init(logger.Options{
+	log := logger.Init(logger.Options{
 		LogDir:        filepath.Join(filepath.Dir(execPath), "logs"),
 		Filename:      "center.log",
 		MaxSize:       20,
@@ -41,10 +41,6 @@ func main() {
 		Level:         logx.DebugLevel,
 		Console:       true,
 	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "初始化日志失败：%v\n", err)
-		os.Exit(1)
-	}
 	config.Log = log
 
 	isWinServ, err := svc.IsWindowsService()

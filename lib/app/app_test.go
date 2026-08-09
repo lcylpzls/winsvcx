@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"io"
 	"sync"
 	"testing"
@@ -61,4 +62,61 @@ func TestRunLoopTick(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("runLoop 未在停止后退出")
 	}
+}
+
+// TestRunServiceMode 覆盖服务模式（不等待系统信号）。
+func TestRunServiceMode(t *testing.T) {
+	origSvc, origWait := isWindowsService, waitSignalAndStop
+	isWindowsService = func() (bool, error) { return true, nil }
+	waitSignalAndStop = func(chan struct{}) { t.Fatal("服务模式不应等待系统信号") }
+	defer func() { isWindowsService, waitSignalAndStop = origSvc, origWait }()
+
+	stopCh := make(chan struct{})
+	var wg sync.WaitGroup
+	Run(stopCh, &wg, testLogger())
+	close(stopCh)
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("服务模式 Run 未在停止后完成")
+	}
+}
+
+// TestRunAppMode 覆盖应用模式（等待系统信号后停止）。
+func TestRunAppMode(t *testing.T) {
+	origSvc, origWait := isWindowsService, waitSignalAndStop
+	isWindowsService = func() (bool, error) { return false, nil }
+	closed := false
+	waitSignalAndStop = func(ch chan struct{}) {
+		closed = true
+		close(ch)
+	}
+	defer func() { isWindowsService, waitSignalAndStop = origSvc, origWait }()
+
+	stopCh := make(chan struct{})
+	var wg sync.WaitGroup
+	Run(stopCh, &wg, testLogger())
+	if !closed {
+		t.Fatal("应用模式应等待系统信号")
+	}
+	wg.Wait()
+}
+
+// TestRunCheckError 覆盖服务检测失败（不阻塞直接返回）。
+func TestRunCheckError(t *testing.T) {
+	origSvc, origWait := isWindowsService, waitSignalAndStop
+	isWindowsService = func() (bool, error) { return false, errors.New("检测失败") }
+	waitSignalAndStop = func(chan struct{}) { t.Fatal("检测失败不应等待系统信号") }
+	defer func() { isWindowsService, waitSignalAndStop = origSvc, origWait }()
+
+	stopCh := make(chan struct{})
+	var wg sync.WaitGroup
+	Run(stopCh, &wg, testLogger())
+	close(stopCh)
+	wg.Wait()
 }

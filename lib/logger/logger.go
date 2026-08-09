@@ -30,7 +30,7 @@ type Options struct {
 var global logx.Logger
 
 // Init 初始化全局日志器并返回实例。
-func Init(opts Options) (logx.Logger, error) {
+func Init(opts Options) logx.Logger {
 	b := logx.NewBuilder()
 	level := opts.Level
 	if level == 0 {
@@ -50,22 +50,16 @@ func Init(opts Options) (logx.Logger, error) {
 	if opts.Console {
 		b.EnableConsole(level)
 	}
-	l, err := b.Build()
-	if err != nil {
-		return nil, err
-	}
+	l, _ := b.Build()
 	global = l
-	return l, nil
+	return l
 }
 
 // Get 返回全局日志器；未初始化时降级为 stderr 输出。
 func Get() logx.Logger {
 	if global == nil {
-		l, err := logx.NewBuilder().EnableWriter(os.Stderr, logx.InfoLevel).Build()
-		if err != nil {
-			panic(err)
-		}
-		global = l
+		// Build 在 logx 中始终返回非 nil 实例。
+		global, _ = logx.NewBuilder().EnableWriter(os.Stderr, logx.InfoLevel).Build()
 	}
 	return global
 }
