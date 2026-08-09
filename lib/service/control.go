@@ -255,6 +255,12 @@ func Uninstall(name string) error {
 	if !exists {
 		return errx.NewCode(wxerr.CodeServiceNotFound, "服务不存在："+name)
 	}
+	// 运行中的服务先停止，避免删除失败。
+	if status, statusErr := GetServiceStatus(name); statusErr == nil && status == svc.Running {
+		if err := Stop(name); err != nil {
+			return classifyMgrError(err, wxerr.CodeServiceControlFailed, "卸载前停止服务失败")
+		}
+	}
 
 	m, err := connectManager()
 	if err != nil {

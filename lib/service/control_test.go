@@ -212,12 +212,19 @@ func TestSecondConnectError(t *testing.T) {
 		t.Fatalf("Install 应报连接失败，实际：%v", err)
 	}
 
-	// Uninstall：存在检查成功后连接失败。
-	restore = applySequenceControl(&fakeManager{svc: &fakeService{}}, 2)
+	// Uninstall：状态查询连接失败被容忍，继续执行卸载。
+	uninstallSvc := &fakeService{}
+	origRemove := removeEventLog
+	removeEventLog = func(string) error { return nil }
+	restore = applySequenceControl(&fakeManager{svc: uninstallSvc}, 2)
 	err = Uninstall("svc")
 	restore()
-	if !errx.Is(err, wxerr.CodeManagerConnect) {
-		t.Fatalf("Uninstall 应报连接失败，实际：%v", err)
+	removeEventLog = origRemove
+	if err != nil {
+		t.Fatalf("Uninstall 应容忍状态查询失败并继续卸载：%v", err)
+	}
+	if !uninstallSvc.deleted {
+		t.Fatal("Uninstall 应完成删除")
 	}
 
 	// Start：存在与状态查询成功后连接失败。
@@ -350,11 +357,32 @@ func TestUninstall(t *testing.T) {
 	}
 
 	// 存在检查通过后打开失败。
-	restore = applyControl(&fakeManager{svc: &fakeService{}, openFailAt: 2}, nil, nil, nil, time.Second)
+	restore = applyControl(&fakeManager{svc: &fakeService{}, openFailAt: 3}, nil, nil, nil, time.Second)
 	err = Uninstall("svc")
 	restore()
 	if !errx.Is(err, wxerr.CodeServiceNotFound) {
 		t.Fatalf("打开失败应报服务不存在，实际：%v", err)
+	}
+
+	// 运行中：先停止再卸载。
+	stopped := &fakeService{status: svc.Running, controlState: svc.Stopped}
+	restore = applyControl(&fakeManager{svc: stopped}, nil, nil, nil, time.Second)
+	err = Uninstall("svc")
+	restore()
+	if err != nil {
+		t.Fatalf("运行中卸载失败：%v", err)
+	}
+	if !stopped.deleted {
+		t.Fatal("运行中卸载应先停止并删除服务")
+	}
+
+	// 运行中但停止失败。
+	restore = applyControl(&fakeManager{svc: &fakeService{status: svc.Running,
+		controlErr: errors.New("停止失败")}}, nil, nil, nil, time.Second)
+	err = Uninstall("svc")
+	restore()
+	if !errx.Is(err, wxerr.CodeServiceControlFailed) {
+		t.Fatalf("停止失败应报错，实际：%v", err)
 	}
 }
 
