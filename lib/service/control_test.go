@@ -293,6 +293,19 @@ func TestInstall(t *testing.T) {
 		t.Fatalf("恢复配置失败应报错，实际：%v", err)
 	}
 
+	// 恢复配置失败应回滚删除服务。
+	rollbackRecovery := &fakeService{recoveryErr: errors.New("恢复失败")}
+	restore = applyControl(&fakeManager{openErr: errors.New("不存在"), svc: rollbackRecovery},
+		nil, nil, nil, time.Second)
+	err = Install("svc", "", "")
+	restore()
+	if !errx.Is(err, wxerr.CodeServiceControlFailed) {
+		t.Fatalf("恢复配置失败应报错，实际：%v", err)
+	}
+	if !rollbackRecovery.deleted {
+		t.Fatal("恢复配置失败应回滚删除服务")
+	}
+
 	// 事件日志失败应回滚删除服务。
 	rollback := &fakeService{}
 	restore = applyControl(&fakeManager{openErr: errors.New("不存在"), svc: rollback},

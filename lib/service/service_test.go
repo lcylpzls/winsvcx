@@ -127,3 +127,37 @@ func TestExecuteChannelClose(t *testing.T) {
 		t.Fatal("未收到停止命令时 StopFlag 不应置位")
 	}
 }
+
+// TestExecuteNilLogFallback 覆盖日志器未注入时的降级（不 panic）。
+func TestExecuteNilLogFallback(t *testing.T) {
+	orig := config.Log
+	config.Log = nil
+	defer func() { config.Log = orig }()
+	origRun := runApp
+	runApp = func(stopCh chan struct{}, wg *sync.WaitGroup, _ logx.Logger) {
+		wg.Add(1)
+		go func() {
+			<-stopCh
+			wg.Done()
+		}()
+	}
+	defer func() { runApp = origRun }()
+
+	s := &Service{}
+	req := make(chan svc.ChangeRequest)
+	changes := make(chan svc.Status, 8)
+	done := make(chan struct{})
+	go func() {
+		_, _ = s.Execute(nil, req, changes)
+		close(done)
+	}()
+	<-changes
+	<-changes
+	req <- svc.ChangeRequest{Cmd: svc.Stop}
+	<-changes
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("Execute 未退出")
+	}
+}

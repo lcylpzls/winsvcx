@@ -232,6 +232,8 @@ func InstallWithOptions(name, displayName, description string, opts InstallOptio
 
 	err = s.SetRecoveryActions(opts.RecoveryActions, opts.RecoveryResetPeriod)
 	if err != nil {
+		// 恢复配置失败时回滚已创建的服务。
+		_ = s.Delete()
 		return classifyMgrError(err, wxerr.CodeServiceControlFailed, "无法设置服务恢复操作")
 	}
 
