@@ -50,7 +50,11 @@ func Init(opts Options) logx.Logger {
 	if opts.Console {
 		b.EnableConsole(level)
 	}
-	l, _ := b.Build()
+	l, err := b.Build()
+	if err != nil {
+		// 日志目录不可用时降级为 stderr 输出，绝不让日志器为空。
+		l, _ = logx.NewBuilder().EnableWriter(os.Stderr, logx.InfoLevel).Build()
+	}
 	global = l
 	return l
 }

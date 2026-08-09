@@ -27,20 +27,30 @@ var (
 
 // 可替换的服务命令与消息框（测试注入用）。
 var (
-	installSvc   = service.Install
-	uninstallSvc = service.Uninstall
-	startSvc     = service.Start
-	stopSvc      = service.Stop
-	restartSvc   = service.Restart
-	getSvcStatus = service.GetServiceStatus
-	messageBox   = win32.MessageBox
+	installSvc       = service.Install
+	uninstallSvc     = service.Uninstall
+	startSvc         = service.Start
+	stopSvc          = service.Stop
+	restartSvc       = service.Restart
+	getSvcStatus     = service.GetServiceStatus
+	messageBox       = win32.MessageBox
+	executablePath   = os.Executable
+	isWindowsService = svc.IsWindowsService
+	runService       = service.Run
+	runApp           = app.Run
+	getArgs          = func() []string { return os.Args }
 )
 
 func main() {
-	execPath, err := os.Executable()
+	os.Exit(runMain())
+}
+
+// runMain 主流程（可测试入口）。
+func runMain() int {
+	execPath, err := executablePath()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "无法获取可执行文件路径：%v\n", err)
-		os.Exit(1)
+		return 1
 	}
 	log := logger.Init(logger.Options{
 		LogDir:        filepath.Join(filepath.Dir(execPath), "logs"),
@@ -54,25 +64,27 @@ func main() {
 	})
 	config.Log = log
 
-	isWinServ, err := svc.IsWindowsService()
+	isWinServ, err := isWindowsService()
 	if err != nil {
 		config.Log.Error("无法确定是否作为 Windows 服务运行", logx.Fields(logx.Any("error", err)))
-		return
+		return 0
 	}
 	if isWinServ {
-		service.Run(serviceName)
-		return
+		runService(serviceName)
+		return 0
 	}
-	if len(os.Args) > 1 {
-		handleServiceCommand(os.Args[1])
-		return
+	args := getArgs()
+	if len(args) > 1 {
+		handleServiceCommand(args[1])
+		return 0
 	}
 
 	var wg sync.WaitGroup
 	stopCh := make(chan struct{})
-	app.Run(stopCh, &wg, config.Log)
+	runApp(stopCh, &wg, config.Log)
 	wg.Wait()
 	config.Log.Info("退出", logx.Fields())
+	return 0
 }
 
 // handleServiceCommand 处理服务控制命令。

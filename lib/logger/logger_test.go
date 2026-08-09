@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -70,4 +71,19 @@ func TestInitDefaults(t *testing.T) {
 	if err != nil || len(files) == 0 {
 		t.Fatalf("日志文件未创建：%v", err)
 	}
+}
+
+// TestInitFallback 覆盖日志目录不可用时的 stderr 降级。
+func TestInitFallback(t *testing.T) {
+	Reset()
+	defer Reset()
+	blocker := filepath.Join(t.TempDir(), "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	l := Init(Options{LogDir: blocker, Filename: "app.log"})
+	if l == nil {
+		t.Fatal("降级日志器为空")
+	}
+	l.Info("降级测试", logx.Fields())
 }

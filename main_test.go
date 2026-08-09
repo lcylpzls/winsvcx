@@ -4,8 +4,10 @@ package main
 
 import (
 	"errors"
+	"sync"
 	"testing"
 
+	"github.com/lcylpzls/logx"
 	"github.com/lcylpzls/winsvcx/lib/win32"
 	"golang.org/x/sys/windows/svc"
 )
@@ -160,5 +162,103 @@ func TestHandleInvalidCommand(t *testing.T) {
 	restore()
 	if got := lastBox(boxes); got.caption != "无效命令" {
 		t.Fatalf("无效命令消息框不符：%+v", got)
+	}
+}
+
+// mainStubs 主流程依赖测试桩。
+type mainStubs struct {
+	exeErr   error
+	svcErr   error
+	isSvc    bool
+	args     []string
+	runSvc   func(string)
+	appRun   func(chan struct{}, *sync.WaitGroup, logx.Logger)
+	boxes    *[]boxCall
+	startErr error
+}
+
+// applyMainStubs 注入主流程依赖并返回恢复函数。
+func applyMainStubs(s mainStubs) func() {
+	origExe, origSvc, origRunSvc, origApp, origArgs, origBox, origStart :=
+		executablePath, isWindowsService, runService, runApp, getArgs, messageBox, startSvc
+	executablePath = func() (string, error) {
+		if s.exeErr != nil {
+			return "", s.exeErr
+		}
+		return `C:\test\app.exe`, nil
+	}
+	isWindowsService = func() (bool, error) { return s.isSvc, s.svcErr }
+	runService = s.runSvc
+	runApp = s.appRun
+	getArgs = func() []string { return s.args }
+	messageBox = func(caption, text string, style uint32) int {
+		*s.boxes = append(*s.boxes, boxCall{caption: caption, text: text, style: style})
+		return win32.IDOK
+	}
+	startSvc = func(string) error { return s.startErr }
+	return func() {
+		executablePath, isWindowsService, runService, runApp, getArgs, messageBox, startSvc =
+			origExe, origSvc, origRunSvc, origApp, origArgs, origBox, origStart
+	}
+}
+
+func TestRunMainExecutableError(t *testing.T) {
+	restore := applyMainStubs(mainStubs{exeErr: errors.New("路径失败")})
+	code := runMain()
+	restore()
+	if code != 1 {
+		t.Fatalf("可执行文件路径失败应返回 1，实际：%d", code)
+	}
+}
+
+func TestRunMainServiceCheckError(t *testing.T) {
+	restore := applyMainStubs(mainStubs{svcErr: errors.New("检测失败")})
+	code := runMain()
+	restore()
+	if code != 0 {
+		t.Fatalf("服务检测失败应返回 0，实际：%d", code)
+	}
+}
+
+func TestRunMainServiceMode(t *testing.T) {
+	called := false
+	restore := applyMainStubs(mainStubs{
+		isSvc:  true,
+		runSvc: func(string) { called = true },
+	})
+	code := runMain()
+	restore()
+	if code != 0 || !called {
+		t.Fatalf("服务模式应调用 runService：code=%d called=%v", code, called)
+	}
+}
+
+func TestRunMainCommandMode(t *testing.T) {
+	var boxes []boxCall
+	restore := applyMainStubs(mainStubs{
+		args:  []string{"app.exe", "start"},
+		boxes: &boxes,
+	})
+	code := runMain()
+	restore()
+	if code != 0 || lastBox(boxes).caption != "启动服务成功" {
+		t.Fatalf("命令模式应分发命令：code=%d boxes=%+v", code, boxes)
+	}
+}
+
+func TestRunMainAppMode(t *testing.T) {
+	restore := applyMainStubs(mainStubs{
+		appRun: func(stopCh chan struct{}, wg *sync.WaitGroup, _ logx.Logger) {
+			wg.Add(1)
+			go func() {
+				close(stopCh)
+				wg.Done()
+			}()
+		},
+	})
+	code := runMain()
+	restore()
+	if code != 0 {
+		t.Fatalf("应用模式应返回 0，实际：%d", code)
 	}
 }
