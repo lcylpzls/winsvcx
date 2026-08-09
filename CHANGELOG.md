@@ -1,5 +1,19 @@
 # 更新日志
 
+## [v0.3.0] - 2026-08-10
+
+### 新增
+
+- 文档定稿：design / architecture / api 三份文档；
+- 主入口命令注入化，install/uninstall/start/stop/restart 全部
+  命令行分支边界测试（消息框断言）；
+- README 结构、依赖与 CI 说明补全。
+
+### 质量
+
+- 主包命令分发覆盖；lib/errors、lib/logger 100%；
+- race / vet / staticcheck 全绿。
+
 ## [v0.2.0] - 2026-08-10
 
 ### 新增

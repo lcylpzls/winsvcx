@@ -6,8 +6,8 @@
 包括服务的安装、卸载、启动、停止和重启等操作。该框架使用 `golang.org/x/sys/windows/svc`
 包实现 Windows 服务功能，并提供了简单易用的命令行接口进行服务管理。
 
-> 当前状态：**v0.2.0（控制层可测化）**。日志使用 logx、错误统一 errx，
-> CI 与发布仅限 Windows 平台。
+> 当前状态：**v0.3.0（文档与命令测试定稿）**。日志使用 logx、
+> 错误统一 errx，CI 与发布仅限 Windows 平台。
 
 ## 功能特性
 
@@ -127,6 +127,13 @@ var serviceDescription string = "这是一个基于go语言构建的具备Window
 - CI 仅运行于 Windows：vet、staticcheck、test、race、coverage，
   并交叉构建 windows/amd64 与 windows/arm64；
 - Release 由版本标签触发，仅 Windows 平台，测试全绿后发布。
+
+## 文档
+
+- [设计定版](docs/design.md)
+- [架构详解](docs/architecture.md)
+- [API 定版](docs/api.md)
+- [版本路线](docs/roadmap.md)
 
 ## 注意事项
 

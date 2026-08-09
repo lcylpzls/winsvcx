@@ -25,6 +25,17 @@ var (
 	serviceDescription = "这是一个基于 go 语言构建的具备 Windows 服务能力的测试服务，具备方便的命令行参数用于管理服务。"
 )
 
+// 可替换的服务命令与消息框（测试注入用）。
+var (
+	installSvc   = service.Install
+	uninstallSvc = service.Uninstall
+	startSvc     = service.Start
+	stopSvc      = service.Stop
+	restartSvc   = service.Restart
+	getSvcStatus = service.GetServiceStatus
+	messageBox   = win32.MessageBox
+)
+
 func main() {
 	execPath, err := os.Executable()
 	if err != nil {
@@ -69,53 +80,53 @@ func handleServiceCommand(cmd string) {
 	cmd = strings.ToLower(cmd)
 	switch cmd {
 	case "install":
-		if err := service.Install(serviceName, serviceDisplayName, serviceDescription); err != nil {
-			win32.MessageBox("安装服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
+		if err := installSvc(serviceName, serviceDisplayName, serviceDescription); err != nil {
+			messageBox("安装服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
 			return
 		}
-		win32.MessageBox("安装服务成功", "服务已成功安装，正在启动服务...", win32.MB_OK|win32.MB_ICONINFORMATION)
-		if err := service.Start(serviceName); err != nil {
-			win32.MessageBox("启动服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
+		messageBox("安装服务成功", "服务已成功安装，正在启动服务...", win32.MB_OK|win32.MB_ICONINFORMATION)
+		if err := startSvc(serviceName); err != nil {
+			messageBox("启动服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
 			return
 		}
-		win32.MessageBox("启动服务成功", "服务已成功启动", win32.MB_OK|win32.MB_ICONINFORMATION)
+		messageBox("启动服务成功", "服务已成功启动", win32.MB_OK|win32.MB_ICONINFORMATION)
 
 	case "uninstall":
-		if status, statusErr := service.GetServiceStatus(serviceName); statusErr == nil && status == svc.Running {
-			if err := service.Stop(serviceName); err != nil {
-				win32.MessageBox("停止服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
+		if status, statusErr := getSvcStatus(serviceName); statusErr == nil && status == svc.Running {
+			if err := stopSvc(serviceName); err != nil {
+				messageBox("停止服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
 				return
 			}
 		}
-		if err := service.Uninstall(serviceName); err != nil {
-			win32.MessageBox("卸载服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
+		if err := uninstallSvc(serviceName); err != nil {
+			messageBox("卸载服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
 			return
 		}
-		win32.MessageBox("卸载服务成功", "服务已成功卸载", win32.MB_OK|win32.MB_ICONINFORMATION)
+		messageBox("卸载服务成功", "服务已成功卸载", win32.MB_OK|win32.MB_ICONINFORMATION)
 
 	case "start":
-		if err := service.Start(serviceName); err != nil {
-			win32.MessageBox("启动服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
+		if err := startSvc(serviceName); err != nil {
+			messageBox("启动服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
 			return
 		}
-		win32.MessageBox("启动服务成功", "服务已成功启动", win32.MB_OK|win32.MB_ICONINFORMATION)
+		messageBox("启动服务成功", "服务已成功启动", win32.MB_OK|win32.MB_ICONINFORMATION)
 
 	case "stop":
-		if err := service.Stop(serviceName); err != nil {
-			win32.MessageBox("停止服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
+		if err := stopSvc(serviceName); err != nil {
+			messageBox("停止服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
 			return
 		}
-		win32.MessageBox("停止服务成功", "服务已成功停止", win32.MB_OK|win32.MB_ICONINFORMATION)
+		messageBox("停止服务成功", "服务已成功停止", win32.MB_OK|win32.MB_ICONINFORMATION)
 
 	case "restart":
-		if err := service.Restart(serviceName); err != nil {
-			win32.MessageBox("重启服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
+		if err := restartSvc(serviceName); err != nil {
+			messageBox("重启服务失败", err.Error(), win32.MB_OK|win32.MB_ICONERROR)
 			return
 		}
-		win32.MessageBox("重启服务成功", "服务已成功重启", win32.MB_OK|win32.MB_ICONINFORMATION)
+		messageBox("重启服务成功", "服务已成功重启", win32.MB_OK|win32.MB_ICONINFORMATION)
 
 	default:
-		win32.MessageBox("无效命令", "不支持的命令: "+cmd+"\n\n支持的命令: install, uninstall, start, stop, restart",
+		messageBox("无效命令", "不支持的命令: "+cmd+"\n\n支持的命令: install, uninstall, start, stop, restart",
 			win32.MB_OK|win32.MB_ICONWARNING)
 	}
 }
