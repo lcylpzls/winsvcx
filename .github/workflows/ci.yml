@@ -33,7 +33,9 @@ jobs:
         run: go test -race -count=1 ./...
 
       - name: Coverage
-        run: go test -count=1 -coverprofile=coverage.out ./...
+        # Windows PowerShell 会把 -coverprofile=coverage.out 拆成两段，
+        # 必须整体加引号。
+        run: go test -count=1 '-coverprofile=coverage.out' ./...
 
       - name: Show coverage
         run: go tool cover -func coverage.out
