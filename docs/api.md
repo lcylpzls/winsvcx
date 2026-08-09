@@ -73,3 +73,14 @@ MySampleService.exe install|uninstall|start|stop|restart
 ```
 
 无参数：Windows 服务模式（由服务管理器启动）或应用模式（等待系统信号）。
+
+## 7. 安静模式
+
+任意参数位置支持 `-quiet` / `--quiet` / `/quiet` / `-q`：
+关闭消息框与控制台输出，仅保留文件日志；退出码
+`0` 成功、`1` 操作失败、`2` 无效命令。
+
+```text
+MySampleService.exe -quiet install
+MySampleService.exe install -quiet
+```

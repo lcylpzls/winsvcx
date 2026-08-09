@@ -72,4 +72,7 @@ MyService.exe install|uninstall|start|stop|restart
 安装成功后服务为自动启动，崩溃后按 5s/10s/15s 自动重启，
 运行失败会写入 Windows 事件日志。
 
+静默部署：`MyService.exe -quiet install`（关闭弹窗与控制台输出，
+退出码 0 成功 / 1 失败 / 2 无效命令）。
+
 > 注意：install/uninstall/start/stop/restart 需要管理员权限。

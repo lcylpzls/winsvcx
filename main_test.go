@@ -64,24 +64,30 @@ func lastBox(boxes []boxCall) boxCall {
 func TestHandleInstall(t *testing.T) {
 	var boxes []boxCall
 	restore := applyCmdStubs(cmdStubs{boxes: &boxes})
-	handleServiceCommand("install")
+	code := handleServiceCommand("install")
 	restore()
-	if len(boxes) != 2 || lastBox(boxes).caption != "启动服务成功" {
+	if code != 0 || len(boxes) != 2 || lastBox(boxes).caption != "启动服务成功" {
 		t.Fatalf("安装成功流程消息框不符：%+v", boxes)
 	}
 
 	boxes = nil
 	restore = applyCmdStubs(cmdStubs{installErr: errors.New("已存在"), boxes: &boxes})
-	handleServiceCommand("install")
+	code = handleServiceCommand("install")
 	restore()
+	if code != 1 {
+		t.Fatalf("安装失败应返回 1，实际：%d", code)
+	}
 	if got := lastBox(boxes); got.caption != "安装服务失败" {
 		t.Fatalf("安装失败消息框不符：%+v", got)
 	}
 
 	boxes = nil
 	restore = applyCmdStubs(cmdStubs{startErr: errors.New("启动失败"), boxes: &boxes})
-	handleServiceCommand("install")
+	code = handleServiceCommand("install")
 	restore()
+	if code != 1 {
+		t.Fatalf("安装后启动失败应返回 1，实际：%d", code)
+	}
 	if got := lastBox(boxes); got.caption != "启动服务失败" {
 		t.Fatalf("安装后启动失败消息框不符：%+v", got)
 	}
@@ -90,24 +96,33 @@ func TestHandleInstall(t *testing.T) {
 func TestHandleUninstall(t *testing.T) {
 	var boxes []boxCall
 	restore := applyCmdStubs(cmdStubs{status: svc.Stopped, boxes: &boxes})
-	handleServiceCommand("uninstall")
+	code := handleServiceCommand("uninstall")
 	restore()
+	if code != 0 {
+		t.Fatalf("卸载成功应返回 0，实际：%d", code)
+	}
 	if got := lastBox(boxes); got.caption != "卸载服务成功" {
 		t.Fatalf("卸载成功消息框不符：%+v", got)
 	}
 
 	boxes = nil
 	restore = applyCmdStubs(cmdStubs{status: svc.Running, stopErr: errors.New("停止失败"), boxes: &boxes})
-	handleServiceCommand("uninstall")
+	code = handleServiceCommand("uninstall")
 	restore()
+	if code != 1 {
+		t.Fatalf("卸载前停止失败应返回 1，实际：%d", code)
+	}
 	if got := lastBox(boxes); got.caption != "停止服务失败" {
 		t.Fatalf("卸载前停止失败消息框不符：%+v", got)
 	}
 
 	boxes = nil
 	restore = applyCmdStubs(cmdStubs{status: svc.Running, uninstallErr: errors.New("卸载失败"), boxes: &boxes})
-	handleServiceCommand("uninstall")
+	code = handleServiceCommand("uninstall")
 	restore()
+	if code != 1 {
+		t.Fatalf("卸载失败应返回 1，实际：%d", code)
+	}
 	if got := lastBox(boxes); got.caption != "卸载服务失败" {
 		t.Fatalf("卸载失败消息框不符：%+v", got)
 	}
@@ -115,8 +130,11 @@ func TestHandleUninstall(t *testing.T) {
 	// 状态查询失败不阻塞卸载。
 	boxes = nil
 	restore = applyCmdStubs(cmdStubs{statusErr: errors.New("查询失败"), boxes: &boxes})
-	handleServiceCommand("uninstall")
+	code = handleServiceCommand("uninstall")
 	restore()
+	if code != 0 {
+		t.Fatalf("状态查询失败应继续卸载，实际：%d", code)
+	}
 	if got := lastBox(boxes); got.caption != "卸载服务成功" {
 		t.Fatalf("状态查询失败应继续卸载：%+v", got)
 	}
@@ -137,8 +155,11 @@ func TestHandleStartStopRestart(t *testing.T) {
 		var boxes []boxCall
 		stub := cmdStubs{boxes: &boxes}
 		restore := applyCmdStubs(stub)
-		handleServiceCommand(tc.cmd)
+		code := handleServiceCommand(tc.cmd)
 		restore()
+		if code != 0 {
+			t.Fatalf("%s 成功应返回 0，实际：%d", tc.cmd, code)
+		}
 		if got := lastBox(boxes); got.caption != tc.okCap {
 			t.Fatalf("%s 成功消息框不符：%+v", tc.cmd, got)
 		}
@@ -147,8 +168,11 @@ func TestHandleStartStopRestart(t *testing.T) {
 		stub = cmdStubs{boxes: &boxes}
 		tc.setErr(&stub, errors.New("失败"))
 		restore = applyCmdStubs(stub)
-		handleServiceCommand(tc.cmd)
+		code = handleServiceCommand(tc.cmd)
 		restore()
+		if code != 1 {
+			t.Fatalf("%s 失败应返回 1，实际：%d", tc.cmd, code)
+		}
 		if got := lastBox(boxes); got.caption != tc.failCap {
 			t.Fatalf("%s 失败消息框不符：%+v", tc.cmd, got)
 		}
@@ -158,10 +182,50 @@ func TestHandleStartStopRestart(t *testing.T) {
 func TestHandleInvalidCommand(t *testing.T) {
 	var boxes []boxCall
 	restore := applyCmdStubs(cmdStubs{boxes: &boxes})
-	handleServiceCommand("unknown")
+	code := handleServiceCommand("unknown")
 	restore()
+	if code != 2 {
+		t.Fatalf("无效命令应返回 2，实际：%d", code)
+	}
 	if got := lastBox(boxes); got.caption != "无效命令" {
 		t.Fatalf("无效命令消息框不符：%+v", got)
+	}
+}
+
+// TestHandleQuietMode 覆盖安静模式：不弹窗、退出码正常。
+func TestHandleQuietMode(t *testing.T) {
+	origQuiet := quietMode
+	quietMode = true
+	defer func() { quietMode = origQuiet }()
+
+	var boxes []boxCall
+	restore := applyCmdStubs(cmdStubs{boxes: &boxes})
+	if code := handleServiceCommand("install"); code != 0 {
+		t.Fatalf("安静安装应返回 0，实际：%d", code)
+	}
+	restore()
+	if len(boxes) != 0 {
+		t.Fatalf("安静模式不应弹窗：%+v", boxes)
+	}
+
+	boxes = nil
+	restore = applyCmdStubs(cmdStubs{startErr: errors.New("失败"), boxes: &boxes})
+	if code := handleServiceCommand("start"); code != 1 {
+		t.Fatalf("安静失败应返回 1，实际：%d", code)
+	}
+	restore()
+	if len(boxes) != 0 {
+		t.Fatalf("安静模式失败也不应弹窗：%+v", boxes)
+	}
+
+	boxes = nil
+	restore = applyCmdStubs(cmdStubs{boxes: &boxes})
+	if code := handleServiceCommand("bad"); code != 2 {
+		t.Fatalf("安静无效命令应返回 2，实际：%d", code)
+	}
+	restore()
+	if len(boxes) != 0 {
+		t.Fatalf("安静无效命令不应弹窗：%+v", boxes)
 	}
 }
 
@@ -175,12 +239,15 @@ type mainStubs struct {
 	appRun   func(chan struct{}, *sync.WaitGroup, logx.Logger)
 	boxes    *[]boxCall
 	startErr error
+	quiet    bool
 }
 
 // applyMainStubs 注入主流程依赖并返回恢复函数。
 func applyMainStubs(s mainStubs) func() {
 	origExe, origSvc, origRunSvc, origApp, origArgs, origBox, origStart :=
 		executablePath, isWindowsService, runService, runApp, getArgs, messageBox, startSvc
+	origQuiet := quietMode
+	quietMode = s.quiet
 	executablePath = func() (string, error) {
 		if s.exeErr != nil {
 			return "", s.exeErr
@@ -199,6 +266,21 @@ func applyMainStubs(s mainStubs) func() {
 	return func() {
 		executablePath, isWindowsService, runService, runApp, getArgs, messageBox, startSvc =
 			origExe, origSvc, origRunSvc, origApp, origArgs, origBox, origStart
+		quietMode = origQuiet
+	}
+}
+
+// TestParseQuietFlag 覆盖安静模式参数解析。
+func TestParseQuietFlag(t *testing.T) {
+	rest, quiet := parseQuietFlag([]string{"app.exe", "install"})
+	if quiet || len(rest) != 2 || rest[1] != "install" {
+		t.Fatalf("无安静参数应保持原样：%v %v", rest, quiet)
+	}
+	for _, flag := range []string{"-quiet", "--quiet", "/quiet", "-q", "-QUIET"} {
+		rest, quiet = parseQuietFlag([]string{"app.exe", flag, "start"})
+		if !quiet || len(rest) != 2 || rest[1] != "start" {
+			t.Fatalf("%s 应被识别：%v %v", flag, rest, quiet)
+		}
 	}
 }
 
@@ -215,8 +297,8 @@ func TestRunMainServiceCheckError(t *testing.T) {
 	restore := applyMainStubs(mainStubs{svcErr: errors.New("检测失败")})
 	code := runMain()
 	restore()
-	if code != 0 {
-		t.Fatalf("服务检测失败应返回 0，实际：%d", code)
+	if code != 1 {
+		t.Fatalf("服务检测失败应返回 1，实际：%d", code)
 	}
 }
 

@@ -6,7 +6,7 @@
 包括服务的安装、卸载、启动、停止和重启等操作。该框架使用 `golang.org/x/sys/windows/svc`
 包实现 Windows 服务功能，并提供了简单易用的命令行接口进行服务管理。
 
-> 当前状态：**v0.10.0（v1 候选）**。日志使用 logx、
+> 当前状态：**v0.11.0（安静模式）**。日志使用 logx、
 > 错误统一 errx，CI 与发布仅限 Windows 平台（386/amd64/arm64）。
 
 ## 功能特性
@@ -36,6 +36,9 @@ go build -o MySampleService.exe
 - **启动服务**：`MySampleService.exe start`
 - **停止服务**：`MySampleService.exe stop`
 - **重启服务**：`MySampleService.exe restart`
+- **安静模式**：任意位置加 `-quiet`（或 `-q`），关闭消息框与
+  控制台输出，仅保留文件日志与退出码（0 成功 / 1 失败 / 2 无效命令），
+  适合脚本与静默部署：`MySampleService.exe -quiet install`
 
 ### 运行模式
 
