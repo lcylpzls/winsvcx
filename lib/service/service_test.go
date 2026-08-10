@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	testx "github.com/lcylpzls/testx"
 	"io"
 	"sync"
 	"testing"
@@ -82,9 +83,8 @@ func TestRun(t *testing.T) {
 	var ran bool
 	runSvc = func(string, svc.Handler) error { ran = true; return nil }
 	Run("svc")
-	if !ran {
-		t.Fatal("runSvc 未被调用")
-	}
+	testx.RequireTrue(t, ran)
+
 	runSvc = func(string, svc.Handler) error { return errors.New("运行失败") }
 	Run("svc")
 	runSvc = orig

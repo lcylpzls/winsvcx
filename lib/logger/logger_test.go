@@ -1,6 +1,7 @@
 package logger
 
 import (
+	testx "github.com/lcylpzls/testx"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,9 +24,8 @@ func TestInitFileConsole(t *testing.T) {
 		Level:         logx.DebugLevel,
 		Console:       true,
 	})
-	if l == nil {
-		t.Fatal("日志器为空")
-	}
+	testx.RequireNotNil(t, l)
+
 	l.Info("初始化测试", logx.Fields())
 	if err := l.Close(); err != nil {
 		t.Fatalf("关闭日志器失败：%v", err)
@@ -82,8 +82,7 @@ func TestInitFallback(t *testing.T) {
 		t.Fatal(err)
 	}
 	l := Init(Options{LogDir: blocker, Filename: "app.log"})
-	if l == nil {
-		t.Fatal("降级日志器为空")
-	}
+	testx.RequireNotNil(t, l)
+
 	l.Info("降级测试", logx.Fields())
 }

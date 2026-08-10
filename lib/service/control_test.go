@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	testx "github.com/lcylpzls/testx"
 	"testing"
 	"time"
 
@@ -159,9 +160,8 @@ func TestIsServiceExist(t *testing.T) {
 	restore = applyConnectError()
 	_, err = IsServiceExist("svc")
 	restore()
-	if err == nil {
-		t.Fatal("连接失败应返回错误")
-	}
+	testx.RequireError(t, err)
+
 }
 
 func TestControlConnectError(t *testing.T) {
@@ -220,9 +220,8 @@ func TestSecondConnectError(t *testing.T) {
 	err = Uninstall("svc")
 	restore()
 	removeEventLog = origRemove
-	if err != nil {
-		t.Fatalf("Uninstall 应容忍状态查询失败并继续卸载：%v", err)
-	}
+	testx.RequireNoError(t, err)
+
 	if !uninstallSvc.deleted {
 		t.Fatal("Uninstall 应完成删除")
 	}
@@ -258,9 +257,8 @@ func TestInstall(t *testing.T) {
 	restore := applyControl(&fakeManager{openErr: errors.New("不存在"), svc: ok}, nil, nil, nil, time.Second)
 	err := Install("svc", "显示名", "描述")
 	restore()
-	if err != nil {
-		t.Fatalf("安装失败：%v", err)
-	}
+	testx.RequireNoError(t, err)
+
 	if !ok.closed {
 		t.Fatal("安装后服务句柄未关闭")
 	}
@@ -331,9 +329,7 @@ func TestUninstall(t *testing.T) {
 	restore := applyControl(&fakeManager{svc: &fakeService{}}, nil, nil, nil, time.Second)
 	err := Uninstall("svc")
 	restore()
-	if err != nil {
-		t.Fatalf("卸载失败：%v", err)
-	}
+	testx.RequireNoError(t, err)
 
 	restore = applyControl(&fakeManager{openErr: errors.New("不存在")}, nil, nil, nil, time.Second)
 	err = Uninstall("svc")
@@ -369,9 +365,8 @@ func TestUninstall(t *testing.T) {
 	restore = applyControl(&fakeManager{svc: stopped}, nil, nil, nil, time.Second)
 	err = Uninstall("svc")
 	restore()
-	if err != nil {
-		t.Fatalf("运行中卸载失败：%v", err)
-	}
+	testx.RequireNoError(t, err)
+
 	if !stopped.deleted {
 		t.Fatal("运行中卸载应先停止并删除服务")
 	}
@@ -391,9 +386,7 @@ func TestStart(t *testing.T) {
 	restore := applyControl(&fakeManager{svc: ok}, nil, nil, nil, time.Second)
 	err := Start("svc")
 	restore()
-	if err != nil {
-		t.Fatalf("启动失败：%v", err)
-	}
+	testx.RequireNoError(t, err)
 
 	restore = applyControl(&fakeManager{openErr: errors.New("不存在")}, nil, nil, nil, time.Second)
 	err = Start("svc")
@@ -437,9 +430,7 @@ func TestStop(t *testing.T) {
 	restore := applyControl(&fakeManager{svc: ok}, nil, nil, nil, time.Second)
 	err := Stop("svc")
 	restore()
-	if err != nil {
-		t.Fatalf("停止失败：%v", err)
-	}
+	testx.RequireNoError(t, err)
 
 	restore = applyControl(&fakeManager{openErr: errors.New("不存在")}, nil, nil, nil, time.Second)
 	err = Stop("svc")
@@ -496,17 +487,13 @@ func TestRestart(t *testing.T) {
 		nil, nil, nil, time.Second)
 	err := Restart("svc")
 	restore()
-	if err != nil {
-		t.Fatalf("重启失败：%v", err)
-	}
+	testx.RequireNoError(t, err)
 
 	// 已停止：直接启动。
 	restore = applyControl(&fakeManager{svc: &fakeService{status: svc.Stopped}}, nil, nil, nil, time.Second)
 	err = Restart("svc")
 	restore()
-	if err != nil {
-		t.Fatalf("重启失败：%v", err)
-	}
+	testx.RequireNoError(t, err)
 
 	restore = applyControl(&fakeManager{openErr: errors.New("不存在")}, nil, nil, nil, time.Second)
 	err = Restart("svc")
@@ -540,9 +527,8 @@ func TestRealManagerAdapter(t *testing.T) {
 	if err != nil {
 		t.Skipf("无服务管理器访问权限：%v", err)
 	}
-	if m == nil {
-		t.Fatal("服务管理器句柄为空")
-	}
+	testx.RequireNotNil(t, m)
+
 	if _, err := m.OpenService("__winsvcx_not_exist__"); err == nil {
 		t.Fatal("不存在的服务不应打开成功")
 	}
@@ -569,9 +555,8 @@ func TestSetStopTimeout(t *testing.T) {
 // TestValidateInstallOptions 覆盖安装选项默认值与校验。
 func TestValidateInstallOptions(t *testing.T) {
 	def, err := validateInstallOptions(InstallOptions{})
-	if err != nil {
-		t.Fatalf("空选项应补齐默认值：%v", err)
-	}
+	testx.RequireNoError(t, err)
+
 	if def.StartType != mgr.StartAutomatic || len(def.RecoveryActions) != 3 ||
 		def.RecoveryResetPeriod != 60 || def.EventLogTypes == 0 {
 		t.Fatalf("默认值不符：%+v", def)
@@ -617,9 +602,8 @@ func TestInstallWithOptionsCustom(t *testing.T) {
 	}
 	err := InstallWithOptions("svc", "", "", opts)
 	restore()
-	if err != nil {
-		t.Fatalf("安装失败：%v", err)
-	}
+	testx.RequireNoError(t, err)
+
 	if m.createdStartType != mgr.StartManual {
 		t.Fatalf("启动类型未透传：%v", m.createdStartType)
 	}

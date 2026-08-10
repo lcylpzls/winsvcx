@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	testx "github.com/lcylpzls/testx"
 	"io"
 	"sync"
 	"testing"
@@ -101,9 +102,8 @@ func TestRunAppMode(t *testing.T) {
 	stopCh := make(chan struct{})
 	var wg sync.WaitGroup
 	Run(stopCh, &wg, testLogger())
-	if !closed {
-		t.Fatal("应用模式应等待系统信号")
-	}
+	testx.RequireTrue(t, closed)
+
 	wg.Wait()
 }
 

@@ -1,6 +1,7 @@
 package win32
 
 import (
+	testx "github.com/lcylpzls/testx"
 	"syscall"
 	"testing"
 )
@@ -25,9 +26,8 @@ func TestMessageBox(t *testing.T) {
 	if got := MessageBox("标题", "内容", MB_OK|MB_ICONINFORMATION); got != IDYES {
 		t.Fatalf("返回值不符：%d", got)
 	}
-	if gotProcName != "MessageBoxW" {
-		t.Fatalf("过程名不符：%s", gotProcName)
-	}
+	testx.RequireEqual(t, gotProcName, "MessageBoxW")
+
 	if gotStyle&(MB_TOPMOST|MB_SETFOREGROUND) == 0 {
 		t.Fatalf("置顶标志未附加：%#x", gotStyle)
 	}
@@ -36,11 +36,9 @@ func TestMessageBox(t *testing.T) {
 // TestRealProcLookup 覆盖真实 user32.dll 过程查询（不弹窗）。
 func TestRealProcLookup(t *testing.T) {
 	dll := loadUser32()
-	if dll == nil {
-		t.Fatal("user32.dll 句柄为空")
-	}
+	testx.RequireNotNil(t, dll)
+
 	proc := loadProc(dll, "MessageBoxW")
-	if proc == nil {
-		t.Fatal("MessageBoxW 过程为空")
-	}
+	testx.RequireNotNil(t, proc)
+
 }
