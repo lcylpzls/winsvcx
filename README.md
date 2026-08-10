@@ -118,7 +118,7 @@ var serviceDescription string = "这是一个基于go语言构建的具备Window
 
 ## 开发环境要求
 
-- Go 1.23.0 或更高版本
+- Go 1.26.5 或更高版本
 - Windows 操作系统
 
 ## 依赖项
