@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/lcylpzls/errx"
+	"github.com/lcylpzls/validx"
 	wxerr "github.com/lcylpzls/winsvcx/lib/errors"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
@@ -119,28 +120,41 @@ func SetStopTimeout(d time.Duration) error {
 	return nil
 }
 
-// validateInstallOptions 校验并补齐安装选项（纯函数，供测试与 fuzz）。
+// init 注册安装选项校验规则到 validx 全局规则表，错误码保持 winsvcx 语义。
+func init() {
+	_ = validx.RegisterRule("winsvcx_install_options", func(value any, param, path string) error {
+		// 内部调用保证 value 为 InstallOptions。
+		opts := value.(InstallOptions)
+		if opts.StartType > mgr.StartDisabled {
+			return errx.NewCode(wxerr.CodeInvalidConfig, "非法启动类型")
+		}
+		for _, a := range opts.RecoveryActions {
+			if a.Type == 0 || a.Delay <= 0 {
+				return errx.NewCode(wxerr.CodeInvalidConfig, "非法恢复动作")
+			}
+		}
+		return nil
+	})
+}
+
+// validateInstallOptions 校验并补齐安装选项（纯函数，供测试与 fuzz；
+// 校验统一走 validx 规则）。
 func validateInstallOptions(opts InstallOptions) (InstallOptions, error) {
 	def := DefaultInstallOptions()
 	if opts.StartType == 0 {
 		opts.StartType = def.StartType
 	}
-	if opts.StartType > mgr.StartDisabled {
-		return opts, errx.NewCode(wxerr.CodeInvalidConfig, "非法启动类型")
-	}
 	if len(opts.RecoveryActions) == 0 {
 		opts.RecoveryActions = def.RecoveryActions
-	}
-	for _, a := range opts.RecoveryActions {
-		if a.Type == 0 || a.Delay <= 0 {
-			return opts, errx.NewCode(wxerr.CodeInvalidConfig, "非法恢复动作")
-		}
 	}
 	if opts.RecoveryResetPeriod == 0 {
 		opts.RecoveryResetPeriod = def.RecoveryResetPeriod
 	}
 	if opts.EventLogTypes == 0 {
 		opts.EventLogTypes = def.EventLogTypes
+	}
+	if err := validx.ValidateField(opts, "winsvcx_install_options"); err != nil {
+		return opts, err
 	}
 	return opts, nil
 }

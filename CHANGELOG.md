@@ -1,5 +1,19 @@
 # 更新日志
 
+## [v0.15.0] - 2026-08-10
+
+### 变更
+
+- 安装选项校验统一迁移至家族 `validx`：注册
+  `winsvcx_install_options` 全局规则（启动类型、恢复动作），
+  调用点走 `validx.ValidateField`；
+- 默认值补齐逻辑保留在 `validateInstallOptions`，errx 错误码
+  保持 winsvcx 语义，行为不变。
+
+### 质量
+
+- race / vet / staticcheck / govulncheck 全绿；覆盖率维持平台库基线。
+
 ## [v0.14.2] - 2026-08-10
 
 ### 变更

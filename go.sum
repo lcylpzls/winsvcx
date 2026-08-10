@@ -4,5 +4,7 @@ github.com/lcylpzls/logx v1.0.1 h1:7cEh10SGO5s5pnTRwMew+poXCuDl2qE1Z5EzgFVZL/Q=
 github.com/lcylpzls/logx v1.0.1/go.mod h1:reR9kkXoO1rL8xqvvDvNAyyKsU4nqA/9WJlkeQDne4I=
 github.com/lcylpzls/testx v1.2.1 h1:Yu1JQqyYobF/l4dM3MkK6fmeR+iBZRXHYdFrogkZmLM=
 github.com/lcylpzls/testx v1.2.1/go.mod h1:RQM/Rpxw2CfbZHXrChB9Mq+kMryQ+fQy10jHd9CeQTc=
+github.com/lcylpzls/validx v1.2.2 h1:q6ZxN1qdTSaFfGTGoyCi33sluWfwCLDx3hd5xpmidp0=
+github.com/lcylpzls/validx v1.2.2/go.mod h1:HAy1xjuJRfjp1T+7c7aX6BYBrsiDSuQbvgDTOjwAug8=
 golang.org/x/sys v0.33.0 h1:q3i8TbbEz+JRD9ywIRlyRAQbM0qF7hu24q3teo2hbuw=
 golang.org/x/sys v0.33.0/go.mod h1:BJP2sWEmIv4KK5OTEluFJCKSidICx8ciO85XgH3Ak8k=
