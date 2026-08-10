@@ -8,4 +8,4 @@ require (
 	golang.org/x/sys v0.33.0
 )
 
-require github.com/lcylpzls/testx v1.2.0
+require github.com/lcylpzls/testx v1.2.1
