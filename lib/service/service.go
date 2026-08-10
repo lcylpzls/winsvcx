@@ -2,6 +2,8 @@
 package service
 
 import (
+	"context"
+	"fmt"
 	"sync"
 
 	"github.com/lcylpzls/errx"
@@ -34,6 +36,10 @@ var writeEventLog = func(name, msg string) error {
 type Service struct {
 	// StopFlag 标记服务是否收到停止命令。
 	StopFlag bool
+	// Name 服务名（RunWithHook 注入，用于链路属性）。
+	Name string
+	// TraceHook 链路追踪钩子（可选）。
+	TraceHook TraceHook
 }
 
 // currentLogger 返回当前日志器；未注入时降级为全局日志器。
@@ -46,6 +52,8 @@ func currentLogger() logx.Logger {
 
 // Execute 处理服务状态变化与业务启动/停止。
 func (s *Service) Execute(_ []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
+	_, end := s.startTrace()
+	defer func() { end(errnoToError(errno)) }()
 	l := currentLogger()
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
 	changes <- svc.Status{State: svc.StartPending}
@@ -75,9 +83,15 @@ func (s *Service) Execute(_ []string, r <-chan svc.ChangeRequest, changes chan<-
 
 // Run 以 Windows 服务模式运行。
 func Run(name string) {
+	RunWithHook(name, nil)
+}
+
+// RunWithHook 以服务模式运行并注入链路追踪钩子。
+func RunWithHook(name string, h TraceHook) {
+	s := &Service{Name: name, TraceHook: h}
 	l := currentLogger()
 	l.Info("服务启动中", logx.Fields())
-	if err := runSvc(name, &Service{}); err != nil {
+	if err := runSvc(name, s); err != nil {
 		wrapped := errx.WrapCode(err, errors.CodeServiceRunFailed, "服务运行失败")
 		l.Error("服务运行失败", logx.Fields(logx.Any("error", wrapped)))
 		// 同步写入事件日志，便于在事件查看器中排查。
@@ -86,4 +100,26 @@ func Run(name string) {
 		}
 	}
 	l.Info("服务已退出", logx.Fields())
+}
+
+// startTrace 开始服务生命周期链路（无钩子时 no-op）。
+func (s *Service) startTrace() (context.Context, func(error)) {
+	if s.TraceHook == nil {
+		return context.Background(), func(error) {}
+	}
+	name := s.Name
+	if name == "" {
+		name = "windows-service"
+	}
+	return s.TraceHook.Start(context.Background(), "winsvcx.service.execute",
+		TraceAttr{Key: "winsvcx.service_name", Value: name},
+	)
+}
+
+// errnoToError 将服务退出码映射为错误（0 表示正常）。
+func errnoToError(errno uint32) error {
+	if errno == 0 {
+		return nil
+	}
+	return fmt.Errorf("服务退出码：%d", errno)
 }
