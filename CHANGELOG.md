@@ -1,5 +1,15 @@
 # 更新日志
 
+## [v0.15.1] - 2026-08-10
+
+### 变更
+
+- 服务退出码错误统一 errx 化（CodeServiceRunFailed），对外错误带结构化 code/kind，消息保持原语义。
+
+### 质量
+
+- 覆盖率维持基线；race / vet / staticcheck / govulncheck 全绿。
+
 ## [v0.15.0] - 2026-08-10
 
 ### 变更

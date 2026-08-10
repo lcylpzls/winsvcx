@@ -3,14 +3,13 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/lcylpzls/errx"
 	"github.com/lcylpzls/logx"
 	"github.com/lcylpzls/winsvcx/lib/app"
 	"github.com/lcylpzls/winsvcx/lib/config"
-	"github.com/lcylpzls/winsvcx/lib/errors"
+	wxerr "github.com/lcylpzls/winsvcx/lib/errors"
 	"github.com/lcylpzls/winsvcx/lib/logger"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/eventlog"
@@ -92,7 +91,7 @@ func RunWithHook(name string, h TraceHook) {
 	l := currentLogger()
 	l.Info("服务启动中", logx.Fields())
 	if err := runSvc(name, s); err != nil {
-		wrapped := errx.WrapCode(err, errors.CodeServiceRunFailed, "服务运行失败")
+		wrapped := errx.WrapCode(err, wxerr.CodeServiceRunFailed, "服务运行失败")
 		l.Error("服务运行失败", logx.Fields(logx.Any("error", wrapped)))
 		// 同步写入事件日志，便于在事件查看器中排查。
 		if wErr := writeEventLog(name, wrapped.Error()); wErr != nil {
@@ -121,5 +120,5 @@ func errnoToError(errno uint32) error {
 	if errno == 0 {
 		return nil
 	}
-	return fmt.Errorf("服务退出码：%d", errno)
+	return errx.NewCodef(wxerr.CodeServiceRunFailed, "服务退出码：%d", errno)
 }
