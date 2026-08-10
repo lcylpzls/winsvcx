@@ -532,9 +532,7 @@ func TestRealManagerAdapter(t *testing.T) {
 	if _, err := m.OpenService("__winsvcx_not_exist__"); err == nil {
 		t.Fatal("不存在的服务不应打开成功")
 	}
-	if err := m.Disconnect(); err != nil {
-		t.Fatalf("断开服务管理器失败：%v", err)
-	}
+	testx.RequireNoError(t, m.Disconnect())
 }
 
 // TestSetStopTimeout 覆盖停止超时配置校验。

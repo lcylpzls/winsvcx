@@ -27,9 +27,7 @@ func TestInitFileConsole(t *testing.T) {
 	testx.RequireNotNil(t, l)
 
 	l.Info("初始化测试", logx.Fields())
-	if err := l.Close(); err != nil {
-		t.Fatalf("关闭日志器失败：%v", err)
-	}
+	testx.RequireNoError(t, l.Close())
 	if Get() == nil {
 		t.Fatal("全局日志器为空")
 	}
@@ -64,9 +62,7 @@ func TestInitDefaults(t *testing.T) {
 	dir := t.TempDir()
 	l := Init(Options{LogDir: dir, Filename: "default.log"})
 	l.Info("默认配置测试", logx.Fields())
-	if err := l.Close(); err != nil {
-		t.Fatalf("关闭日志器失败：%v", err)
-	}
+	testx.RequireNoError(t, l.Close())
 	files, err := filepath.Glob(filepath.Join(dir, "default-*.log"))
 	if err != nil || len(files) == 0 {
 		t.Fatalf("日志文件未创建：%v", err)

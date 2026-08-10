@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/lcylpzls/logx"
+	"github.com/lcylpzls/testx"
 	"github.com/lcylpzls/winsvcx/lib/cli"
 	"github.com/lcylpzls/winsvcx/lib/win32"
 	"golang.org/x/sys/windows/svc"
@@ -75,9 +76,7 @@ func TestHandleInstall(t *testing.T) {
 	restore = applyCmdStubs(cmdStubs{installErr: errors.New("已存在"), boxes: &boxes})
 	code = handleServiceCommand("install")
 	restore()
-	if code != 1 {
-		t.Fatalf("安装失败应返回 1，实际：%d", code)
-	}
+	testx.RequireEqual(t, code, 1)
 	if got := lastBox(boxes); got.caption != "安装服务失败" {
 		t.Fatalf("安装失败消息框不符：%+v", got)
 	}
@@ -86,9 +85,7 @@ func TestHandleInstall(t *testing.T) {
 	restore = applyCmdStubs(cmdStubs{startErr: errors.New("启动失败"), boxes: &boxes})
 	code = handleServiceCommand("install")
 	restore()
-	if code != 1 {
-		t.Fatalf("安装后启动失败应返回 1，实际：%d", code)
-	}
+	testx.RequireEqual(t, code, 1)
 	if got := lastBox(boxes); got.caption != "启动服务失败" {
 		t.Fatalf("安装后启动失败消息框不符：%+v", got)
 	}
@@ -99,9 +96,7 @@ func TestHandleUninstall(t *testing.T) {
 	restore := applyCmdStubs(cmdStubs{status: svc.Stopped, boxes: &boxes})
 	code := handleServiceCommand("uninstall")
 	restore()
-	if code != 0 {
-		t.Fatalf("卸载成功应返回 0，实际：%d", code)
-	}
+	testx.RequireEqual(t, code, 0)
 	if got := lastBox(boxes); got.caption != "卸载服务成功" {
 		t.Fatalf("卸载成功消息框不符：%+v", got)
 	}
@@ -110,9 +105,7 @@ func TestHandleUninstall(t *testing.T) {
 	restore = applyCmdStubs(cmdStubs{status: svc.Running, stopErr: errors.New("停止失败"), boxes: &boxes})
 	code = handleServiceCommand("uninstall")
 	restore()
-	if code != 1 {
-		t.Fatalf("卸载前停止失败应返回 1，实际：%d", code)
-	}
+	testx.RequireEqual(t, code, 1)
 	if got := lastBox(boxes); got.caption != "停止服务失败" {
 		t.Fatalf("卸载前停止失败消息框不符：%+v", got)
 	}
@@ -121,9 +114,7 @@ func TestHandleUninstall(t *testing.T) {
 	restore = applyCmdStubs(cmdStubs{status: svc.Running, uninstallErr: errors.New("卸载失败"), boxes: &boxes})
 	code = handleServiceCommand("uninstall")
 	restore()
-	if code != 1 {
-		t.Fatalf("卸载失败应返回 1，实际：%d", code)
-	}
+	testx.RequireEqual(t, code, 1)
 	if got := lastBox(boxes); got.caption != "卸载服务失败" {
 		t.Fatalf("卸载失败消息框不符：%+v", got)
 	}
@@ -133,9 +124,7 @@ func TestHandleUninstall(t *testing.T) {
 	restore = applyCmdStubs(cmdStubs{statusErr: errors.New("查询失败"), boxes: &boxes})
 	code = handleServiceCommand("uninstall")
 	restore()
-	if code != 0 {
-		t.Fatalf("状态查询失败应继续卸载，实际：%d", code)
-	}
+	testx.RequireEqual(t, code, 0)
 	if got := lastBox(boxes); got.caption != "卸载服务成功" {
 		t.Fatalf("状态查询失败应继续卸载：%+v", got)
 	}
@@ -158,9 +147,7 @@ func TestHandleStartStopRestart(t *testing.T) {
 		restore := applyCmdStubs(stub)
 		code := handleServiceCommand(tc.cmd)
 		restore()
-		if code != 0 {
-			t.Fatalf("%s 成功应返回 0，实际：%d", tc.cmd, code)
-		}
+		testx.RequireEqual(t, code, 0)
 		if got := lastBox(boxes); got.caption != tc.okCap {
 			t.Fatalf("%s 成功消息框不符：%+v", tc.cmd, got)
 		}
@@ -171,9 +158,7 @@ func TestHandleStartStopRestart(t *testing.T) {
 		restore = applyCmdStubs(stub)
 		code = handleServiceCommand(tc.cmd)
 		restore()
-		if code != 1 {
-			t.Fatalf("%s 失败应返回 1，实际：%d", tc.cmd, code)
-		}
+		testx.RequireEqual(t, code, 1)
 		if got := lastBox(boxes); got.caption != tc.failCap {
 			t.Fatalf("%s 失败消息框不符：%+v", tc.cmd, got)
 		}
@@ -185,9 +170,7 @@ func TestHandleInvalidCommand(t *testing.T) {
 	restore := applyCmdStubs(cmdStubs{boxes: &boxes})
 	code := handleServiceCommand("unknown")
 	restore()
-	if code != 2 {
-		t.Fatalf("无效命令应返回 2，实际：%d", code)
-	}
+	testx.RequireEqual(t, code, 2)
 	if got := lastBox(boxes); got.caption != "无效命令" {
 		t.Fatalf("无效命令消息框不符：%+v", got)
 	}
@@ -275,18 +258,14 @@ func TestRunMainExecutableError(t *testing.T) {
 	restore := applyMainStubs(mainStubs{exeErr: errors.New("路径失败")})
 	code := runMain()
 	restore()
-	if code != 1 {
-		t.Fatalf("可执行文件路径失败应返回 1，实际：%d", code)
-	}
+	testx.RequireEqual(t, code, 1)
 }
 
 func TestRunMainServiceCheckError(t *testing.T) {
 	restore := applyMainStubs(mainStubs{svcErr: errors.New("检测失败")})
 	code := runMain()
 	restore()
-	if code != 1 {
-		t.Fatalf("服务检测失败应返回 1，实际：%d", code)
-	}
+	testx.RequireEqual(t, code, 1)
 }
 
 func TestRunMainServiceMode(t *testing.T) {
@@ -325,9 +304,7 @@ func TestRunMainQuietCommand(t *testing.T) {
 	})
 	code := runMain()
 	restore()
-	if code != 0 {
-		t.Fatalf("安静命令应返回 0，实际：%d", code)
-	}
+	testx.RequireEqual(t, code, 0)
 	if len(boxes) != 0 {
 		t.Fatalf("安静模式不应弹窗：%+v", boxes)
 	}
@@ -339,9 +316,7 @@ func TestRunMainInvalidCommand(t *testing.T) {
 	restore := applyMainStubs(mainStubs{args: []string{"app.exe", "bad"}, boxes: &boxes})
 	code := runMain()
 	restore()
-	if code != 2 {
-		t.Fatalf("无效命令应返回 2，实际：%d", code)
-	}
+	testx.RequireEqual(t, code, 2)
 	if got := lastBox(boxes); got.caption != "无效命令" {
 		t.Fatalf("无效命令消息框不符：%+v", got)
 	}
@@ -350,9 +325,7 @@ func TestRunMainInvalidCommand(t *testing.T) {
 	restore = applyMainStubs(mainStubs{args: []string{"app.exe", "-quiet", "-verbose"}, boxes: &boxes})
 	code = runMain()
 	restore()
-	if code != 2 {
-		t.Fatalf("未知开关应返回 2，实际：%d", code)
-	}
+	testx.RequireEqual(t, code, 2)
 	if len(boxes) != 0 {
 		t.Fatalf("安静无效参数不应弹窗：%+v", boxes)
 	}
@@ -385,7 +358,5 @@ func TestRunMainAppMode(t *testing.T) {
 	})
 	code := runMain()
 	restore()
-	if code != 0 {
-		t.Fatalf("应用模式应返回 0，实际：%d", code)
-	}
+	testx.RequireEqual(t, code, 0)
 }

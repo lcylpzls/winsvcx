@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lcylpzls/logx"
+	"github.com/lcylpzls/testx"
 	"github.com/lcylpzls/winsvcx/lib/config"
 	"golang.org/x/sys/windows/svc"
 )
@@ -81,16 +82,12 @@ func TestServiceTraceHook(t *testing.T) {
 	}
 
 	calls := hook.snapshot()
-	if len(calls) != 1 {
-		t.Fatalf("应调用 1 次追踪钩子，实际：%d", len(calls))
-	}
+	testx.RequireLen(t, calls, 1)
 	c := calls[0]
-	if c.name != "winsvcx.service.execute" || c.attrs["winsvcx.service_name"] != "MyService" || !c.ended {
-		t.Fatalf("追踪调用不符：%+v", c)
-	}
-	if c.err != nil {
-		t.Fatalf("正常退出不应记录错误：%v", c.err)
-	}
+	testx.RequireEqual(t, c.name, "winsvcx.service.execute")
+	testx.RequireEqual(t, c.attrs["winsvcx.service_name"], "MyService")
+	testx.RequireTrue(t, c.ended)
+	testx.RequireNil(t, c.err)
 }
 
 // TestRunWithHook 覆盖带钩子运行入口。
@@ -105,17 +102,13 @@ func TestRunWithHook(t *testing.T) {
 	hook := &fakeTraceHook{}
 	RunWithHook("svc", hook)
 	runSvc = orig
-	if got == nil || got.Name != "svc" || got.TraceHook != hook {
-		t.Fatalf("RunWithHook 未透传：%+v", got)
-	}
+	testx.RequireNotNil(t, got)
+	testx.RequireEqual(t, got.Name, "svc")
+	testx.RequireEqual(t, got.TraceHook, hook)
 }
 
 // TestErrnoToError 覆盖退出码映射。
 func TestErrnoToError(t *testing.T) {
-	if errnoToError(0) != nil {
-		t.Fatal("退出码 0 应返回 nil")
-	}
-	if errnoToError(1) == nil {
-		t.Fatal("非零退出码应返回错误")
-	}
+	testx.RequireNil(t, errnoToError(0))
+	testx.RequireNotNil(t, errnoToError(1))
 }
