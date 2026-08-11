@@ -17,7 +17,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0 // indirect
 	github.com/lcylpzls/errx v1.5.7 // indirect
-	github.com/lcylpzls/tracex v1.0.4 // indirect
+	github.com/lcylpzls/tracex v1.2.0 // indirect
 	github.com/lcylpzls/validx v1.2.6 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel v1.45.0 // indirect
