@@ -29,6 +29,10 @@ jobs:
       - name: Test
         run: go test -count=1 ./...
 
+      - name: Test examples
+        working-directory: examples
+        run: go test -count=1 ./...
+
       - name: Test shuffled
         run: go test -shuffle=on -count=1 ./...
 
@@ -67,7 +71,9 @@ jobs:
           check-latest: true
 
       - name: Build
-        run: go build ./...
+        run: |
+          go build ./...
+          cd examples && go build ./...
         env:
           GOARCH: ${{ matrix.arch }}
 
