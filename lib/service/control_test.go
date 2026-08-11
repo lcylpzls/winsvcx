@@ -17,6 +17,8 @@ import (
 type fakeService struct {
 	status       svc.State
 	queryErr     error
+	queryCalls   int
+	queryFailAt  int
 	startErr     error
 	controlErr   error
 	controlState svc.State
@@ -34,7 +36,11 @@ func (s *fakeService) Close() error {
 }
 
 func (s *fakeService) Query() (svc.Status, error) {
-	return svc.Status{State: s.status}, s.queryErr
+	s.queryCalls++
+	if s.queryErr != nil && (s.queryFailAt == 0 || s.queryCalls == s.queryFailAt) {
+		return svc.Status{State: s.status}, s.queryErr
+	}
+	return svc.Status{State: s.status}, nil
 }
 
 func (s *fakeService) Start() error { return s.startErr }
@@ -439,6 +445,15 @@ func TestStop(t *testing.T) {
 		t.Fatalf("不存在应报错，实际：%v", err)
 	}
 
+	// 状态查询失败。
+	restore = applyControl(&fakeManager{svc: &fakeService{status: svc.Running, queryErr: errors.New("查询失败")}},
+		nil, nil, nil, time.Second)
+	err = Stop("svc")
+	restore()
+	if !errx.Is(err, wxerr.CodeServiceControlFailed) {
+		t.Fatalf("状态查询失败应报错，实际：%v", err)
+	}
+
 	restore = applyControl(&fakeManager{svc: &fakeService{status: svc.Stopped}}, nil, nil, nil, time.Second)
 	err = Stop("svc")
 	restore()
@@ -456,7 +471,7 @@ func TestStop(t *testing.T) {
 
 	// 轮询查询失败。
 	restore = applyControl(&fakeManager{svc: &fakeService{status: svc.Running, controlState: svc.Running,
-		queryErr: errors.New("查询失败")}}, nil, nil, nil, time.Second)
+		queryErr: errors.New("查询失败"), queryFailAt: 2}}, nil, nil, nil, time.Second)
 	err = Stop("svc")
 	restore()
 	if !errx.Is(err, wxerr.CodeServiceControlFailed) {
@@ -629,5 +644,43 @@ func TestAccessDeniedClassification(t *testing.T) {
 	restore()
 	if !errx.Is(err, wxerr.CodeAccessDenied) {
 		t.Fatalf("创建服务被拒绝应细化错误码，实际：%v", err)
+	}
+}
+
+// TestInstallInvalidOptions 覆盖 InstallWithOptions 的选项校验失败分支。
+func TestInstallInvalidOptions(t *testing.T) {
+	restore := applyControl(&fakeManager{openErr: errors.New("不存在"), svc: &fakeService{}},
+		nil, nil, nil, time.Second)
+	err := InstallWithOptions("svc", "", "", InstallOptions{StartType: mgr.StartDisabled + 1})
+	restore()
+	if !errx.Is(err, wxerr.CodeInvalidConfig) {
+		t.Fatalf("非法选项应报错，实际：%v", err)
+	}
+}
+
+// TestUninstallFinalConnectError 覆盖卸载流程最后一次连接失败分支。
+func TestUninstallFinalConnectError(t *testing.T) {
+	restore := applySequenceControl(&fakeManager{svc: &fakeService{status: svc.Stopped}}, 3)
+	err := Uninstall("svc")
+	restore()
+	if !errx.Is(err, wxerr.CodeManagerConnect) {
+		t.Fatalf("卸载最终连接失败应报错，实际：%v", err)
+	}
+}
+
+// TestConnectManagerDefault 覆盖默认连接闭包的成功与失败分支。
+func TestConnectManagerDefault(t *testing.T) {
+	orig := mgrConnect
+	defer func() { mgrConnect = orig }()
+
+	mgrConnect = func() (*mgr.Mgr, error) { return &mgr.Mgr{}, nil }
+	m, err := connectManager()
+	if err != nil || m == nil {
+		t.Fatalf("连接成功分支失败：%v", err)
+	}
+
+	mgrConnect = func() (*mgr.Mgr, error) { return nil, errors.New("连接失败") }
+	if _, err := connectManager(); err == nil {
+		t.Fatal("连接失败分支未生效")
 	}
 }

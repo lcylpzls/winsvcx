@@ -24,6 +24,12 @@ func TestParse(t *testing.T) {
 	testx.RequireEqual(t, opts.Command, CommandInstall)
 	testx.RequireFalse(t, opts.Quiet)
 
+	// 空参数应跳过。
+	opts, err = Parse([]string{"app.exe", "", "install"})
+	testx.RequireNoError(t, err)
+	testx.RequireEqual(t, opts.Command, CommandInstall)
+	testx.RequireFalse(t, opts.Quiet)
+
 	// 大小写不敏感。
 	opts, err = Parse([]string{"app.exe", "INSTALL"})
 	testx.RequireNoError(t, err)

@@ -15,8 +15,9 @@ import (
 // 可替换系统函数（测试注入用）。
 var (
 	isWindowsService  = svc.IsWindowsService
+	newSignalChannel  = func() chan os.Signal { return make(chan os.Signal, 1) }
 	waitSignalAndStop = func(stopCh chan struct{}) {
-		stopSignal := make(chan os.Signal, 1)
+		stopSignal := newSignalChannel()
 		signal.Notify(stopSignal, syscall.SIGTERM, syscall.SIGINT)
 		<-stopSignal
 		signal.Stop(stopSignal)

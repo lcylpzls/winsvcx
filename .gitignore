@@ -5,3 +5,6 @@ coverage.out
 logs
 *.exe
 *.bat
+
+cover_lib_*.out
+

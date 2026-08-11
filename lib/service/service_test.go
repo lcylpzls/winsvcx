@@ -11,6 +11,7 @@ import (
 	"github.com/lcylpzls/logx"
 	"github.com/lcylpzls/winsvcx/lib/config"
 	"golang.org/x/sys/windows/svc"
+	"golang.org/x/sys/windows/svc/eventlog"
 )
 
 // testLogger 构造写入丢弃目标的日志器。
@@ -147,6 +148,82 @@ func TestExecuteChannelClose(t *testing.T) {
 	}
 	if s.StopFlag {
 		t.Fatal("未收到停止命令时 StopFlag 不应置位")
+	}
+}
+
+// fakeEventLogWriter 是事件日志写入接口的测试桩。
+type fakeEventLogWriter struct {
+	msg string
+	err error
+}
+
+func (w *fakeEventLogWriter) Error(_ uint32, msg string) error {
+	w.msg = msg
+	return w.err
+}
+
+// TestWriteEventLogDefault 覆盖默认事件日志写入的成功与失败分支。
+func TestWriteEventLogDefault(t *testing.T) {
+	orig := openEventLog
+	defer func() { openEventLog = orig }()
+
+	w := &fakeEventLogWriter{}
+	openEventLog = func(string) (eventLogWriter, func(), error) {
+		return w, func() {}, nil
+	}
+	if err := writeEventLog("svc", "消息"); err != nil || w.msg != "消息" {
+		t.Fatalf("成功分支失败：%v msg=%q", err, w.msg)
+	}
+
+	openEventLog = func(string) (eventLogWriter, func(), error) {
+		return nil, nil, errors.New("打开失败")
+	}
+	if err := writeEventLog("svc", "消息"); err == nil {
+		t.Fatal("打开失败分支未生效")
+	}
+}
+
+// TestOpenEventLogDefault 覆盖默认事件日志打开闭包的成功与失败分支。
+func TestOpenEventLogDefault(t *testing.T) {
+	orig := eventlogOpen
+	defer func() { eventlogOpen = orig }()
+
+	eventlogOpen = func(string) (*eventlog.Log, error) {
+		return &eventlog.Log{Handle: 0}, nil
+	}
+	w, closeFn, err := openEventLog("svc")
+	if err != nil || w == nil || closeFn == nil {
+		t.Fatalf("成功分支失败：%v", err)
+	}
+	closeFn()
+
+	eventlogOpen = func(string) (*eventlog.Log, error) {
+		return nil, errors.New("打开失败")
+	}
+	if _, _, err := openEventLog("svc"); err == nil {
+		t.Fatal("打开失败分支未生效")
+	}
+}
+
+// TestStartTraceEmptyName 覆盖服务名为空时的默认链路名称分支。
+func TestStartTraceEmptyName(t *testing.T) {
+	h := &fakeTraceHook{}
+	s := &Service{TraceHook: h}
+	ctx, end := s.startTrace()
+	if ctx == nil {
+		t.Fatal("ctx 不应为 nil")
+	}
+	end(nil)
+
+	calls := h.snapshot()
+	if len(calls) != 1 {
+		t.Fatalf("应记录一次调用：%d", len(calls))
+	}
+	if calls[0].attrs["winsvcx.service_name"] != "windows-service" {
+		t.Fatalf("默认服务名属性不符：%v", calls[0].attrs)
+	}
+	if !calls[0].ended {
+		t.Fatal("结束回调未执行")
 	}
 }
 

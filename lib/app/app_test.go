@@ -4,7 +4,9 @@ import (
 	"errors"
 	testx "github.com/lcylpzls/testx"
 	"io"
+	"os"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -119,4 +121,31 @@ func TestRunCheckError(t *testing.T) {
 	Run(stopCh, &wg, testLogger())
 	close(stopCh)
 	wg.Wait()
+}
+
+// TestWaitSignalAndStopDefault 覆盖默认信号等待实现的完整路径。
+func TestWaitSignalAndStopDefault(t *testing.T) {
+	origNew := newSignalChannel
+	defer func() { newSignalChannel = origNew }()
+
+	sigCh := make(chan os.Signal, 1)
+	sigCh <- syscall.SIGTERM
+	newSignalChannel = func() chan os.Signal { return sigCh }
+
+	stopCh := make(chan struct{})
+	waitSignalAndStop(stopCh)
+	select {
+	case <-stopCh:
+	default:
+		t.Fatal("默认信号等待未关闭 stopCh")
+	}
+}
+
+// TestNewSignalChannelDefault 覆盖默认信号通道构造。
+func TestNewSignalChannelDefault(t *testing.T) {
+	ch := newSignalChannel()
+	if ch == nil {
+		t.Fatal("信号通道不应为 nil")
+	}
+	close(ch)
 }

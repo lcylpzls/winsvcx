@@ -14,6 +14,23 @@ import (
 	"golang.org/x/sys/windows/svc/mgr"
 )
 
+// mgrOps 是 *mgr.Mgr 的最小操作接口（供适配器与测试桩实现）。
+type mgrOps interface {
+	Disconnect() error
+	OpenService(name string) (*mgr.Service, error)
+	CreateService(name, exePath string, c mgr.Config, args ...string) (*mgr.Service, error)
+}
+
+// serviceOps 是 *mgr.Service 的最小操作接口（供适配器与测试桩实现）。
+type serviceOps interface {
+	Close() error
+	Query() (svc.Status, error)
+	Start(args ...string) error
+	Control(cmd svc.Cmd) (svc.Status, error)
+	Delete() error
+	SetRecoveryActions(actions []mgr.RecoveryAction, resetPeriod uint32) error
+}
+
 // manager 服务管理器窄接口（*mgr.Mgr 经 adapter 适配）。
 type manager interface {
 	Disconnect() error
@@ -31,8 +48,8 @@ type serviceHandle interface {
 	SetRecoveryActions(actions []mgr.RecoveryAction, resetPeriod uint32) error
 }
 
-// managerAdapter 适配 *mgr.Mgr 到 manager 接口。
-type managerAdapter struct{ m *mgr.Mgr }
+// managerAdapter 适配 mgrOps 到 manager 接口。
+type managerAdapter struct{ m mgrOps }
 
 func (a managerAdapter) Disconnect() error { return a.m.Disconnect() }
 
@@ -52,8 +69,8 @@ func (a managerAdapter) CreateService(name, exePath string, c mgr.Config, args .
 	return serviceAdapter{s: s}, nil
 }
 
-// serviceAdapter 适配 *mgr.Service 到 serviceHandle 接口。
-type serviceAdapter struct{ s *mgr.Service }
+// serviceAdapter 适配 serviceOps 到 serviceHandle 接口。
+type serviceAdapter struct{ s serviceOps }
 
 func (a serviceAdapter) Close() error { return a.s.Close() }
 
@@ -71,8 +88,9 @@ func (a serviceAdapter) SetRecoveryActions(actions []mgr.RecoveryAction, resetPe
 
 // 可替换系统函数（测试注入用）。
 var (
+	mgrConnect     = mgr.Connect
 	connectManager = func() (manager, error) {
-		m, err := mgr.Connect()
+		m, err := mgrConnect()
 		if err != nil {
 			return nil, err
 		}

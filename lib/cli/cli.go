@@ -29,7 +29,7 @@ var SupportedCommands = []string{
 
 // Version 构建版本，随发版同步更新，可用 ldflags 覆盖：
 // -ldflags "-X github.com/lcylpzls/winsvcx/lib/cli.Version=v1.0.0"
-var Version = "0.14.0"
+var Version = "1.1.1"
 
 // Options 命令行解析结果。
 type Options struct {

@@ -42,3 +42,13 @@ func TestRealProcLookup(t *testing.T) {
 	testx.RequireNotNil(t, proc)
 
 }
+
+// TestCallMessageBoxDefault 覆盖默认 proc.Call 路径（使用无害系统函数，避免弹窗）。
+func TestCallMessageBoxDefault(t *testing.T) {
+	dll := loadUser32()
+	proc := loadProc(dll, "GetSystemMetrics")
+	testx.RequireNotNil(t, proc)
+
+	ret := callMessageBox(proc, 0, nil, nil, 0)
+	_ = ret
+}

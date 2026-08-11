@@ -21,14 +21,31 @@ var runApp = app.Run
 // runSvc 可替换的服务运行函数（测试注入用）。
 var runSvc = svc.Run
 
+// eventLogWriter 是事件日志写入的最小接口（*eventlog.Log 天然满足）。
+type eventLogWriter interface {
+	Error(eventID uint32, msg string) error
+}
+
+// eventlogOpen 打开事件日志句柄（可注入，测试用）。
+var eventlogOpen = eventlog.Open
+
+// openEventLog 打开事件日志；失败时返回错误。
+var openEventLog = func(name string) (eventLogWriter, func(), error) {
+	l, err := eventlogOpen(name)
+	if err != nil {
+		return nil, nil, err
+	}
+	return l, func() { _ = l.Close() }, nil
+}
+
 // writeEventLog 将服务错误写入 Windows 事件日志（尽力而为）。
 var writeEventLog = func(name, msg string) error {
-	l, err := eventlog.Open(name)
+	w, closeFn, err := openEventLog(name)
 	if err != nil {
 		return err
 	}
-	defer l.Close()
-	return l.Error(1, msg)
+	defer closeFn()
+	return w.Error(1, msg)
 }
 
 // Service 实现 svc.Handler 接口。
