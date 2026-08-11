@@ -1,6 +1,6 @@
 # winsvcx API 定版
 
-> 版本：v0.3.0 · 以下签名与代码一致。
+> 版本：v1.1.1 · 以下签名与代码一致。
 
 ## 1. lib/logger
 
@@ -66,13 +66,13 @@ func MessageBox(caption, text string, style uint32) int
 `errx.RegisterCodeKind` 注册，使用 `errx.NewCode` / `errx.WrapCode`
 构造，`errx.Is(err, code)` 匹配。
 
-## 6. 入口命令
+## 6. 命令行与示例入口
 
-```text
-MySampleService.exe install|uninstall|start|stop|restart
-```
+`lib/cli.Parse` 负责参数解析（`install|uninstall|start|stop|restart`，
+支持 `-quiet` 等开关）；完整可执行入口见
+`examples/service`（独立模块），根目录不再放置 main。
 
-无参数：Windows 服务模式（由服务管理器启动）或应用模式（等待系统信号）。
+无命令参数：Windows 服务模式（由服务管理器启动）或应用模式（等待系统信号）。
 
 ## 7. 安静模式
 
